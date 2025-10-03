@@ -2,6 +2,7 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
 /// Represents an entity from a LDtk level.
+@immutable
 class LdtkEntity {
   /// The identifier/type of the entity.
   final String identifier;

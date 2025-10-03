@@ -4,9 +4,6 @@ A Flutter package for integrating [LDtk](https://ldtk.io/) levels into [Flame En
 
 [![pub package](https://img.shields.io/pub/v/flame_ldtk.svg)](https://pub.dev/packages/flame_ldtk)
 
-[![popularity](https://img.shields.io/pub/popularity/flame_ldtk?logo=dart)](https://pub.dev/packages/flame_ldtk/score)
-
-
 ## Features
 
 - 🎮 **Super Simple Export Support** - Load LDtk levels exported in Super Simple format
@@ -24,7 +21,7 @@ Add `flame_ldtk` to your `pubspec.yaml`:
 dependencies:
   flame: ^1.32.0
   flame_ldtk:
-    path: ^0.1.0
+    path: ^0.1.1
 ```
 
 ## LDtk Setup

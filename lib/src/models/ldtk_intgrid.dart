@@ -14,18 +14,23 @@ class LdtkIntGrid {
   /// Mapping of IntGrid values to their colors.
   final Map<int, Color> valueColors;
 
-  const LdtkIntGrid({
+  /// Pre-calculated inverse of cellSize for optimization.
+  late final double _inverseCellSize;
+
+  /// Cached width of the grid in cells.
+  late final int width;
+
+  /// Cached height of the grid in cells.
+  late final int height;
+
+  LdtkIntGrid({
     required this.layerName,
     required this.grid,
     required this.cellSize,
     this.valueColors = const {},
-  });
-
-  /// Gets the width of the grid in cells.
-  int get width => grid.isNotEmpty ? grid[0].length : 0;
-
-  /// Gets the height of the grid in cells.
-  int get height => grid.length;
+  })  : _inverseCellSize = cellSize > 0 ? 1.0 / cellSize : 0.0,
+        width = grid.isNotEmpty ? grid[0].length : 0,
+        height = grid.length;
 
   /// Gets the grid value at the specified cell coordinates.
   /// Returns 0 if out of bounds.
@@ -43,9 +48,9 @@ class LdtkIntGrid {
 
   /// Checks if a pixel position collides with a solid cell.
   bool isSolidAtPixel(double pixelX, double pixelY) {
-    if (cellSize <= 0) return false;
-    final cellX = (pixelX / cellSize).floor();
-    final cellY = (pixelY / cellSize).floor();
+    if (_inverseCellSize == 0.0) return false;
+    final cellX = (pixelX * _inverseCellSize).floor();
+    final cellY = (pixelY * _inverseCellSize).floor();
     return isSolid(cellX, cellY);
   }
 }

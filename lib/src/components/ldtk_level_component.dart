@@ -5,7 +5,7 @@ import '../parsers/ldtk_super_simple_parser.dart';
 
 /// A Flame component that loads and displays a LDtk level.
 class LdtkLevelComponent extends PositionComponent {
-  final LdtkSuperSimpleParser _parser = LdtkSuperSimpleParser();
+  static final LdtkSuperSimpleParser _parser = LdtkSuperSimpleParser();
 
   LdtkLevel? _levelData;
 

@@ -3,6 +3,7 @@ import 'ldtk_entity.dart';
 import 'ldtk_intgrid.dart';
 
 /// Represents a LDtk level loaded from Super Simple Export format.
+@immutable
 class LdtkLevel {
   /// The name/identifier of the level.
   final String name;

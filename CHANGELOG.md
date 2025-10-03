@@ -1,3 +1,7 @@
+## 0.1.1
+
+* Optimize code and add cache for assets
+
 ## 0.1.0
 
 * Initial release

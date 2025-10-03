@@ -9,6 +9,18 @@ import '../models/ldtk_intgrid.dart';
 
 /// Parser for LDtk Super Simple Export format.
 class LdtkSuperSimpleParser {
+  // Cache for loaded assets
+  static final Map<String, ui.Image> _imageCache = {};
+  static final Map<String, LdtkLevel> _levelCache = {};
+  static final Map<String, String> _stringCache = {};
+
+  /// Clears all caches. Useful for hot-reload or memory management.
+  static void clearCache() {
+    _imageCache.clear();
+    _levelCache.clear();
+    _stringCache.clear();
+  }
+
   /// Parses a complete level from the given directory path.
   ///
   /// The [levelPath] should point to the level folder containing
@@ -20,15 +32,26 @@ class LdtkSuperSimpleParser {
 
   /// Loads the composite image for a level.
   Future<ui.Image> loadComposite(String path) async {
+    if (_imageCache.containsKey(path)) {
+      return _imageCache[path]!;
+    }
+
     final data = await rootBundle.load(path);
     final bytes = data.buffer.asUint8List();
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
-    return frame.image;
+    final image = frame.image;
+
+    _imageCache[path] = image;
+    return image;
   }
 
   /// Parses entities and metadata from data.json.
   Future<LdtkLevel> parseDataJson(String path) async {
+    if (_levelCache.containsKey(path)) {
+      return _levelCache[path]!;
+    }
+
     final jsonString = await rootBundle.loadString(path);
     final json = jsonDecode(jsonString) as Map<String, dynamic>;
 
@@ -60,7 +83,7 @@ class LdtkSuperSimpleParser {
       }
     }
 
-    return LdtkLevel(
+    final level = LdtkLevel(
       name: name,
       width: width,
       height: height,
@@ -68,6 +91,9 @@ class LdtkSuperSimpleParser {
       entities: entities,
       customData: customFields,
     );
+
+    _levelCache[path] = level;
+    return level;
   }
 
   /// Helper method to parse a single entity from JSON.
@@ -98,7 +124,11 @@ class LdtkSuperSimpleParser {
   /// Parses an IntGrid layer from CSV format.
   Future<LdtkIntGrid> parseIntGridCsv(
       String path, String layerName, int cellSize) async {
-    final csvString = await rootBundle.loadString(path);
+    // Cache CSV string loading
+    if (!_stringCache.containsKey(path)) {
+      _stringCache[path] = await rootBundle.loadString(path);
+    }
+    final csvString = _stringCache[path]!;
 
     // Parse CSV with explicit line separator handling
     final csvData = const CsvToListConverter(
@@ -106,22 +136,20 @@ class LdtkSuperSimpleParser {
       shouldParseNumbers: true,
     ).convert(csvString);
 
-    // Convert CSV data to 2D grid of integers, filtering empty rows
-    List<List<int>> grid = csvData.where((row) => row.isNotEmpty).map((row) {
-      return row
-          .map(
-              (cell) => cell is int ? cell : int.tryParse(cell.toString()) ?? 0)
-          .toList();
-    }).toList();
+    // Convert CSV data to 2D grid of integers, filtering empty rows in one pass
+    List<List<int>> grid = [];
+    for (final row in csvData) {
+      if (row.isEmpty) continue;
+      grid.add([
+        for (final cell in row)
+          cell is int ? cell : int.tryParse(cell.toString()) ?? 0
+      ]);
+    }
 
     // Remove trailing empty column if all rows have it (from trailing comma in LDtk CSV export)
     if (grid.isNotEmpty &&
         grid.every((row) => row.isNotEmpty && row.last == 0)) {
-      grid = grid.map((row) {
-        final newRow = List<int>.from(row);
-        newRow.removeLast();
-        return newRow;
-      }).toList();
+      grid = grid.map((row) => row.sublist(0, row.length - 1)).toList();
     }
 
     return LdtkIntGrid(
@@ -144,7 +172,7 @@ class LdtkSuperSimpleParser {
     List<String> layerNames, {
     int? cellSize,
   }) async {
-    final Map<String, LdtkIntGrid> intGrids = Map.from(level.intGrids);
+    final Map<String, LdtkIntGrid> intGrids = {...level.intGrids};
 
     for (final layerName in layerNames) {
       final csvPath = '$levelPath/$layerName.csv';
