@@ -166,7 +166,9 @@ void main() {
     test('isSolidAtPixel handles cellSize of 0', () {
       final grid = LdtkIntGrid(
         layerName: 'Test',
-        grid: [[1]],
+        grid: [
+          [1]
+        ],
         cellSize: 0,
       );
 

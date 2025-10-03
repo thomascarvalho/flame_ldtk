@@ -96,7 +96,8 @@ class LdtkSuperSimpleParser {
   }
 
   /// Parses an IntGrid layer from CSV format.
-  Future<LdtkIntGrid> parseIntGridCsv(String path, String layerName, int cellSize) async {
+  Future<LdtkIntGrid> parseIntGridCsv(
+      String path, String layerName, int cellSize) async {
     final csvString = await rootBundle.loadString(path);
 
     // Parse CSV with explicit line separator handling
@@ -106,15 +107,16 @@ class LdtkSuperSimpleParser {
     ).convert(csvString);
 
     // Convert CSV data to 2D grid of integers, filtering empty rows
-    List<List<int>> grid = csvData
-        .where((row) => row.isNotEmpty)
-        .map((row) {
-          return row.map((cell) => cell is int ? cell : int.tryParse(cell.toString()) ?? 0).toList();
-        })
-        .toList();
+    List<List<int>> grid = csvData.where((row) => row.isNotEmpty).map((row) {
+      return row
+          .map(
+              (cell) => cell is int ? cell : int.tryParse(cell.toString()) ?? 0)
+          .toList();
+    }).toList();
 
     // Remove trailing empty column if all rows have it (from trailing comma in LDtk CSV export)
-    if (grid.isNotEmpty && grid.every((row) => row.isNotEmpty && row.last == 0)) {
+    if (grid.isNotEmpty &&
+        grid.every((row) => row.isNotEmpty && row.last == 0)) {
       grid = grid.map((row) {
         final newRow = List<int>.from(row);
         newRow.removeLast();
@@ -152,7 +154,8 @@ class LdtkSuperSimpleParser {
 
       // Use provided cellSize or calculate from grid dimensions
       final gridWidth = intGrid.width;
-      final finalCellSize = cellSize ?? (gridWidth > 0 ? level.width ~/ gridWidth : 8);
+      final finalCellSize =
+          cellSize ?? (gridWidth > 0 ? level.width ~/ gridWidth : 8);
 
       // Create new IntGrid with correct cellSize
       final correctedIntGrid = LdtkIntGrid(

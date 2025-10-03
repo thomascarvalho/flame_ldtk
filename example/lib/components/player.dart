@@ -117,9 +117,9 @@ class Player extends PositionComponent {
   bool _canMoveTo(LdtkIntGrid collisions, double x, double y) {
     // Check all four corners of the player hitbox
     final corners = [
-      (x, y),                       // Top-left
-      (x + size.x - 1, y),          // Top-right
-      (x, y + size.y - 1),          // Bottom-left
+      (x, y), // Top-left
+      (x + size.x - 1, y), // Top-right
+      (x, y + size.y - 1), // Bottom-left
       (x + size.x - 1, y + size.y - 1), // Bottom-right
     ];
 
