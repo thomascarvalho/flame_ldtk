@@ -20,8 +20,7 @@ Add `flame_ldtk` to your `pubspec.yaml`:
 ```yaml
 dependencies:
   flame: ^1.32.0
-  flame_ldtk:
-    path: ^0.1.1
+  flame_ldtk: ^0.1.0
 ```
 
 ## LDtk Setup
