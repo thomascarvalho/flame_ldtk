@@ -29,7 +29,7 @@
 	"minifyJson": false,
 	"externalLevels": true,
 	"exportTiled": false,
-	"simplifiedExport": false,
+	"simplifiedExport": true,
 	"imageExportMode": "None",
 	"exportLevelBg": true,
 	"pngFilePattern": null,
@@ -225,7 +225,7 @@
 			"bgPivotY": 0.5,
 			"__smartColor": "#ADADB5",
 			"__bgPos": null,
-			"externalRelPath": "world/Level_0.ldtkl",
+			"externalRelPath": "world-simplified/Level_0.ldtkl",
 			"fieldInstances": [],
 			"layerInstances": null,
 			"__neighbours": []

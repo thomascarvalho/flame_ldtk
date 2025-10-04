@@ -6,19 +6,19 @@ import 'package:flutter/services.dart';
 import '../models/ldtk_level.dart';
 import '../models/ldtk_entity.dart';
 import '../models/ldtk_intgrid.dart';
+import 'ldtk_parser_utils.dart';
 
 /// Parser for LDtk Super Simple Export format.
 class LdtkSuperSimpleParser {
   // Cache for loaded assets
-  static final Map<String, ui.Image> _imageCache = {};
   static final Map<String, LdtkLevel> _levelCache = {};
   static final Map<String, String> _stringCache = {};
 
   /// Clears all caches. Useful for hot-reload or memory management.
   static void clearCache() {
-    _imageCache.clear();
     _levelCache.clear();
     _stringCache.clear();
+    LdtkParserUtils.clearImageCache();
   }
 
   /// Parses a complete level from the given directory path.
@@ -32,18 +32,7 @@ class LdtkSuperSimpleParser {
 
   /// Loads the composite image for a level.
   Future<ui.Image> loadComposite(String path) async {
-    if (_imageCache.containsKey(path)) {
-      return _imageCache[path]!;
-    }
-
-    final data = await rootBundle.load(path);
-    final bytes = data.buffer.asUint8List();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    final image = frame.image;
-
-    _imageCache[path] = image;
-    return image;
+    return LdtkParserUtils.loadImage(path);
   }
 
   /// Parses entities and metadata from data.json.
@@ -63,11 +52,7 @@ class LdtkSuperSimpleParser {
     final customFields = json['customFields'] as Map<String, dynamic>? ?? {};
 
     // Parse background color from hex string
-    Color? bgColor;
-    if (bgColorStr != null && bgColorStr.startsWith('#')) {
-      final hex = bgColorStr.substring(1);
-      bgColor = Color(int.parse('FF$hex', radix: 16));
-    }
+    final bgColor = LdtkParserUtils.parseHexColor(bgColorStr);
 
     // Parse entities
     final List<LdtkEntity> entities = [];
@@ -105,19 +90,12 @@ class LdtkSuperSimpleParser {
     final height = (json['height'] as num).toDouble();
     final customFields = json['customFields'] as Map<String, dynamic>? ?? {};
 
-    // Parse color from integer
-    Color? color;
-    final colorInt = json['color'] as int?;
-    if (colorInt != null) {
-      color = Color(0xFF000000 | colorInt);
-    }
-
     return LdtkEntity(
       identifier: identifier,
       position: Vector2(x, y),
       size: Vector2(width, height),
       fields: customFields,
-      color: color,
+      color: LdtkParserUtils.parseIntColor(json['color'] as int?),
     );
   }
 

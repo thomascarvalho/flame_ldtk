@@ -2,22 +2,22 @@ import 'package:flame/game.dart';
 import 'package:flame/input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../components/platformer_level.dart';
+import '../components/json_level.dart';
 import '../components/player.dart';
 
-/// A simple platformer game demonstrating flame_ldtk usage.
-class PlatformerGame extends FlameGame with KeyboardEvents {
+/// A game that demonstrates loading LDtk JSON format.
+class JsonGame extends FlameGame with KeyboardEvents {
   Player? player;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Load the level with collision layer
-    final level = PlatformerLevel();
+    // Load the level from JSON format
+    final level = JsonLevel();
     await level.loadLevel(
-      'assets/world/simplified/Level_0',
-      intGridLayers: ['Collisions'],
+      'assets/world.ldtk',
+      'Level_0',
     );
 
     await add(level);

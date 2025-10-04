@@ -6,12 +6,13 @@ A Flutter package for integrating [LDtk](https://ldtk.io/) levels into [Flame En
 
 ## Features
 
-- 🎮 **Super Simple Export Support** - Load LDtk levels exported in Super Simple format
+- 🎮 **Dual Format Support** - Load LDtk levels in both Super Simple Export and standard JSON format
 - 🗺️ **Level Rendering** - Automatic composite image loading and rendering
-- 🎯 **Entity Parsing** - Extract entities with positions, sizes, and custom fields
+- 🎯 **Entity Parsing** - Extract entities with positions, sizes, custom fields, and colors
 - 🧱 **IntGrid Support** - CSV-based IntGrid for collisions and game logic
 - 🎨 **Flexible Architecture** - Override hooks to customize entity rendering
 - 📦 **Generic Design** - No built-in collision logic, adapt to your game type
+- ⚡ **Optimized Performance** - Shared utilities and centralized caching for both parsers
 
 ## Installation
 
@@ -20,10 +21,15 @@ Add `flame_ldtk` to your `pubspec.yaml`:
 ```yaml
 dependencies:
   flame: ^1.32.0
-  flame_ldtk: ^0.1.0
+  flame_ldtk: ^0.2.0
 ```
 
 ## LDtk Setup
+
+This package supports **two LDtk export formats**:
+
+### Option 1: Super Simple Export (Recommended for mobile/web)
+**Best for:** Fast loading, minimal memory usage, mobile/web games
 
 1. Create your level in [LDtk](https://ldtk.io/)
 2. Go to **Project Settings → Super Simple Export**
@@ -33,8 +39,19 @@ dependencies:
 
 Each exported level will contain:
 - `_composite.png` - Complete level visual
-- `data.json` - Level metadata and entities
+- `data.json` - Level metadata and entities (489B for simple levels)
 - `[LayerName].csv` - IntGrid layers (for collisions, etc.)
+
+### Option 2: Standard JSON Export
+**Best for:** Access to full project definitions, fewer files per level
+
+1. Create your level in [LDtk](https://ldtk.io/)
+2. In **Project Settings**, enable **"Save levels to separate files"** (optional)
+3. Save your project to generate `.ldtk` and `.ldtkl` files
+
+Your project structure will be:
+- `world.ldtk` - Main project file with definitions
+- `world/Level_0.ldtkl` - Individual level files (if using external levels)
 
 ## Basic Usage
 
@@ -43,11 +60,16 @@ Each exported level will contain:
 ```yaml
 flutter:
   assets:
+    # For Super Simple Export
     - assets/world/simplified/Level_0/
+    # For JSON format
+    - assets/world.ldtk
+    - assets/world/
 ```
 
 ### 2. Load a level in your game
 
+#### Using Super Simple Format (Recommended)
 ```dart
 import 'package:flame/game.dart';
 import 'package:flame_ldtk/flame_ldtk.dart';
@@ -62,14 +84,32 @@ class MyGame extends FlameGame {
 }
 ```
 
+#### Using JSON Format
+```dart
+import 'package:flame/game.dart';
+import 'package:flame_ldtk/flame_ldtk.dart';
+
+class MyGame extends FlameGame {
+  @override
+  Future<void> onLoad() async {
+    final level = LdtkJsonLevelComponent();
+    await level.loadLevel('assets/world.ldtk', 'Level_0');
+    await add(level);
+  }
+}
+```
+
+> **Note:** Both components provide the same API! The only difference is the format they load.
+
 ## Working with Entities
 
 ### Customize entity rendering
 
-Override `onEntitiesLoaded()` to handle your entities:
+Override `onEntitiesLoaded()` to handle your entities (works with both components):
 
 ```dart
-class MyLevelComponent extends LdtkLevelComponent {
+// Works with both LdtkLevelComponent and LdtkJsonLevelComponent!
+class MyLevelComponent extends LdtkLevelComponent {  // or LdtkJsonLevelComponent
   @override
   Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
     for (final entity in entities) {
@@ -347,9 +387,9 @@ class PlayerComponent extends PositionComponent {
 
 ## API Reference
 
-### LdtkLevelComponent
+### LdtkLevelComponent (Super Simple Format)
 
-Main component for loading and displaying LDtk levels.
+Main component for loading and displaying LDtk levels in Super Simple Export format.
 
 ```dart
 // Load a level
@@ -367,6 +407,29 @@ Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
   // Your custom entity creation logic
 }
 ```
+
+### LdtkJsonLevelComponent (JSON Format)
+
+Component for loading and displaying LDtk levels in standard JSON format.
+
+```dart
+// Load a level
+await levelComponent.loadLevel(
+  'assets/world.ldtk',      // Project file
+  'Level_0',                 // Level identifier
+);
+
+// Access level data (same as LdtkLevelComponent)
+LdtkLevel? data = levelComponent.levelData;
+
+// Override to customize entity creation (same API)
+@override
+Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
+  // Your custom entity creation logic
+}
+```
+
+> **Both components share the same API** - just swap them based on your export format!
 
 ### LdtkLevel
 
@@ -456,8 +519,32 @@ if (water?.isSolidAtPixel(x, y) ?? false) {
 }
 ```
 
+## Choosing the Right Parser
+
+### Use Super Simple Parser when:
+- 🚀 You need fast loading times
+- 📱 Building for mobile or web
+- 💾 Memory usage is a concern
+- 🎮 You have many levels to load dynamically
+
+### Use JSON Parser when:
+- 📋 You need access to entity/tileset definitions
+- 📦 You prefer fewer files (one .ldtkl per level)
+- 🔧 You want to access metadata from the project file
+- 🖥️ Building for desktop with ample resources
+
+**Performance Comparison (Level_0):**
+```
+Super Simple: ~500B JSON + optional assets = Fast, minimal RAM
+JSON:         ~16KB project + level data = More features, higher RAM
+```
+
 ## Roadmap
 
+- [x] Super Simple Export support
+- [x] JSON Export support
+- [x] Custom fields extraction for both formats
+- [x] Shared utilities and optimized performance
 - [ ] Multi-level support with transitions
 - [ ] PNG-based IntGrid parsing
 - [ ] Tile layer support (individual tiles)

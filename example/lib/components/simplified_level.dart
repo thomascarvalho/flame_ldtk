@@ -1,8 +1,8 @@
 import 'package:flame_ldtk/flame_ldtk.dart';
 import 'player.dart';
 
-/// Custom level component that handles entity instantiation.
-class PlatformerLevel extends LdtkLevelComponent {
+/// Custom level component for Super Simple Export format that handles entity instantiation.
+class SimplifiedLevel extends LdtkLevelComponent {
   Player? player;
 
   @override
