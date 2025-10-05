@@ -1,6 +1,7 @@
 /// Models for LDtk JSON format (non-simplified export).
 ///
 /// These models represent the structure of LDtk project files (.ldtk and .ldtkl).
+library;
 
 /// Root LDtk project structure.
 class LdtkJson {

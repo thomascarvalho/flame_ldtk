@@ -10,7 +10,7 @@ void main() {
         identifier: 'Player',
         position: Vector2(10, 20),
         size: Vector2(16, 16),
-        fields: {'health': 100},
+        fields: const {'health': 100},
         color: Colors.blue,
       );
 
@@ -35,7 +35,7 @@ void main() {
 
   group('LdtkLevel', () {
     test('creates level with correct values', () {
-      final level = LdtkLevel(
+      const level = LdtkLevel(
         name: 'Level_0',
         width: 256,
         height: 256,

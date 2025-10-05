@@ -1,0 +1,37 @@
+#!/bin/bash
+
+echo "🔍 Running pre-commit checks..."
+
+# Check if flutter is available
+if ! command -v flutter &> /dev/null; then
+    echo "❌ Flutter is not installed or not in PATH"
+    exit 1
+fi
+
+echo ""
+echo "📝 Checking code formatting..."
+if ! dart format --output=none --set-exit-if-changed .; then
+    echo ""
+    echo "❌ Code formatting issues found!"
+    echo ""
+    echo "Fix with: dart format ."
+    echo ""
+    exit 1
+fi
+echo "✅ Code formatting is correct"
+
+echo ""
+echo "🔬 Running static analysis..."
+if ! flutter analyze --fatal-infos --fatal-warnings; then
+    echo ""
+    echo "❌ Analysis found issues!"
+    echo ""
+    echo "Fix the issues above before committing."
+    echo ""
+    exit 1
+fi
+echo "✅ Analysis passed"
+
+echo ""
+echo "✨ All pre-commit checks passed!"
+exit 0

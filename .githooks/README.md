@@ -10,6 +10,14 @@ git config core.hooksPath .githooks
 
 ## Available Hooks
 
+### pre-commit
+
+Runs before each commit to ensure code quality:
+- **Code formatting**: Checks with `dart format`
+- **Static analysis**: Runs `flutter analyze --fatal-infos --fatal-warnings`
+
+If any check fails, the commit is aborted.
+
 ### commit-msg
 
 Validates that commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) format.
