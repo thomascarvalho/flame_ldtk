@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.1](https://github.com/thomascarvalho/flame_ldtk/compare/v0.2.0...v0.2.1) (2025-10-05)
+
+
+### Features
+
+* add pre-commit hook for format and analyze checks ([ff9d028](https://github.com/thomascarvalho/flame_ldtk/commit/ff9d0289c64f508ed38dcb6502523edf78f005a4))
+
+
+### Bug Fixes
+
+* add release-please PAT token ([12d11ad](https://github.com/thomascarvalho/flame_ldtk/commit/12d11ad0124e1d827d7df09cdab6a260afddab20))
+* better error handling + cache memory optimisation ([90f8466](https://github.com/thomascarvalho/flame_ldtk/commit/90f846627b4fc15663097473763958c1aa0efe9b))
+* remove duplicate CI runs on push to main ([dd9acee](https://github.com/thomascarvalho/flame_ldtk/commit/dd9aceed62a4303cb5a587cdaf4b8766a0f3bd17))
+* remove invalid package-name parameter from release-please workflow ([1537c6e](https://github.com/thomascarvalho/flame_ldtk/commit/1537c6e0e3da5b8ede85018b8540a877c7630074))
+
 ## [0.2.0](https://github.com/thomascarvalho/flame_ldtk/compare/v0.1.1...v0.2.0) (2025-10-05)
 
 

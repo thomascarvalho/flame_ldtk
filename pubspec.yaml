@@ -1,6 +1,6 @@
 name: flame_ldtk
 description: LDtk support for flame-engine. Integrate LDtk levels into Flame Engine games.
-version: 0.2.0
+version: 0.2.1
 homepage: https://github.com/thomascarvalho/flame_ldtk
 repository: https://github.com/thomascarvalho/flame_ldtk
 issue_tracker: https://github.com/thomascarvalho/flame_ldtk/issues
