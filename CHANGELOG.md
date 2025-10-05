@@ -1,6 +1,11 @@
-## 0.2.0
+# Changelog
 
-* **NEW: LdtkJsonLevelComponent** - Unified API for both export formats
+## [0.2.0](https://github.com/thomascarvalho/flame_ldtk/compare/v0.1.1...v0.2.0) (2025-10-05)
+
+
+### Features
+
+* **LdtkJsonLevelComponent** - Unified API for both export formats ([dac6896](https://github.com/thomascarvalho/flame_ldtk/commit/dac6896))
   - `LdtkLevelComponent` for Super Simple Export (existing)
   - `LdtkJsonLevelComponent` for standard JSON format (new!)
   - Both components share the same API - just swap them based on your format
@@ -8,21 +13,28 @@
   - Levels now properly extract `customData` from `fieldInstances`
   - Entities now extract `fields` from `fieldInstances` and `color` from `__smartColor`
 * **Parser Harmonization**: Both JSON and Super Simple parsers now have consistent behavior
-  - Super Simple Parser: Already supported custom fields and colors
-  - JSON Parser: Now matches Super Simple Parser functionality
-* **Code Refactoring**: Introduced `LdtkParserUtils` utility class
+
+
+### Performance Improvements
+
+* Both parsers now use optimized shared functions for common operations
+* Code Refactoring: Introduced `LdtkParserUtils` utility class
   - Shared utilities between both parsers (color parsing, image loading, field parsing)
   - Centralized image cache for better memory management
   - Reduced code duplication
   - Cleaner, more maintainable codebase
-* **Performance**: Both parsers now use optimized shared functions for common operations
-* **Breaking Change**: None - all existing code continues to work
 
-## 0.1.1
+## [0.1.1](https://github.com/thomascarvalho/flame_ldtk/compare/v0.1.0...v0.1.1) (2024-12-01)
 
-* Optimize code and add cache for assets
 
-## 0.1.0
+### Performance Improvements
+
+* optimize code and add cache for assets ([b58aa07](https://github.com/thomascarvalho/flame_ldtk/commit/b58aa07))
+
+## 0.1.0 (2024-11-15)
+
+
+### Features
 
 * Initial release
 * **LDtk Integration**: Support for LDtk Super Simple Export format

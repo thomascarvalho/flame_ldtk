@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Conventional Commits validation hook
+# https://www.conventionalcommits.org/
+
+commit_msg=$(cat "$1")
+
+# Regex for conventional commits
+# Format: type(scope?): subject
+conventional_regex='^(feat|fix|docs|style|refactor|perf|test|chore|revert|ci|build)(\(.+\))?(!)?: .{1,}'
+
+if ! echo "$commit_msg" | grep -qE "$conventional_regex"; then
+    echo "❌ Commit message does not follow Conventional Commits format!"
+    echo ""
+    echo "Expected format: type(scope?): subject"
+    echo ""
+    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build"
+    echo ""
+    echo "Examples:"
+    echo "  ✅ feat: add new feature"
+    echo "  ✅ fix: correct bug in parser"
+    echo "  ✅ feat(parser): add JSON support"
+    echo "  ✅ feat!: breaking change"
+    echo ""
+    echo "Your commit message:"
+    echo "  ❌ $commit_msg"
+    echo ""
+    exit 1
+fi
+
+exit 0

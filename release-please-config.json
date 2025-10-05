@@ -1,0 +1,14 @@
+{
+  "release-type": "dart",
+  "packages": {
+    ".": {
+      "package-name": "flame_ldtk",
+      "changelog-path": "CHANGELOG.md",
+      "include-component-in-tag": false
+    }
+  },
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "draft": false,
+  "prerelease": false
+}
