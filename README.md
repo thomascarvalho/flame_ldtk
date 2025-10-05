@@ -28,7 +28,7 @@ dependencies:
 
 This package supports **two LDtk export formats**:
 
-### Option 1: Super Simple Export (Recommended for mobile/web)
+### Option 1: Super Simple Export (Recommended)
 **Best for:** Fast loading, minimal memory usage, mobile/web games
 
 1. Create your level in [LDtk](https://ldtk.io/)
@@ -142,7 +142,7 @@ class PlayerComponent extends PositionComponent {
   final LdtkLevel level;
 
   PlayerComponent(this.entity, this.level) {
-    position = entity.position;  // LDtk position (top-left corner)
+    position = entity.position;  // LDtk position
     size = entity.size;           // Entity size from LDtk
   }
 
@@ -519,37 +519,18 @@ if (water?.isSolidAtPixel(x, y) ?? false) {
 }
 ```
 
-## Choosing the Right Parser
-
-### Use Super Simple Parser when:
-- 🚀 You need fast loading times
-- 📱 Building for mobile or web
-- 💾 Memory usage is a concern
-- 🎮 You have many levels to load dynamically
-
-### Use JSON Parser when:
-- 📋 You need access to entity/tileset definitions
-- 📦 You prefer fewer files (one .ldtkl per level)
-- 🔧 You want to access metadata from the project file
-- 🖥️ Building for desktop with ample resources
-
-**Performance Comparison (Level_0):**
-```
-Super Simple: ~500B JSON + optional assets = Fast, minimal RAM
-JSON:         ~16KB project + level data = More features, higher RAM
-```
-
 ## Roadmap
+
+> **Note:** I created this project for a game I'm currently developing. The roadmap may evolve based on my needs. The **Super Simple Export** mode is the most tested and stable format.
 
 - [x] Super Simple Export support
 - [x] JSON Export support
 - [x] Custom fields extraction for both formats
 - [x] Shared utilities and optimized performance
-- [ ] Multi-level support with transitions
 - [ ] PNG-based IntGrid parsing
-- [ ] Tile layer support (individual tiles)
-- [ ] Level background rendering
-- [ ] Hot reload support for LDtk changes
+- [ ] Tile layer support (individual tiles) ?
+- [ ] Level background rendering ?
+- [ ] Hot reload support ?
 
 ## Contributing
 
