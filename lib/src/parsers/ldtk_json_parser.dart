@@ -41,7 +41,8 @@ class LdtkJsonParser {
   ///
   /// The [projectPath] should point to the .ldtk file.
   /// The [levelIdentifier] is the name of the level to load.
-  Future<LdtkLevel> loadLevel(String projectPath, String levelIdentifier) async {
+  Future<LdtkLevel> loadLevel(
+      String projectPath, String levelIdentifier) async {
     final cacheKey = '$projectPath:$levelIdentifier';
     if (_parsedLevelCache.containsKey(cacheKey)) {
       return _parsedLevelCache[cacheKey]!;
@@ -127,7 +128,8 @@ class LdtkJsonParser {
         entityInstance.width.toDouble(),
         entityInstance.height.toDouble(),
       ),
-      fields: LdtkParserUtils.parseFieldInstances(entityInstance.fieldInstances),
+      fields:
+          LdtkParserUtils.parseFieldInstances(entityInstance.fieldInstances),
       color: LdtkParserUtils.parseHexColor(entityInstance.smartColor),
     );
   }

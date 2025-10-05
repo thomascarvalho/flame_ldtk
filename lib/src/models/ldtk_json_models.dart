@@ -214,9 +214,8 @@ class LdtkLayerInstance {
       gridTiles: (json['gridTiles'] as List? ?? [])
           .map((e) => LdtkTileInstance.fromJson(e as Map<String, dynamic>))
           .toList(),
-      intGridCsv: (json['intGridCsv'] as List? ?? [])
-          .map((e) => e as int)
-          .toList(),
+      intGridCsv:
+          (json['intGridCsv'] as List? ?? []).map((e) => e as int).toList(),
     );
   }
 }

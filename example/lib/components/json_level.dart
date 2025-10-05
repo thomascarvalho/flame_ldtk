@@ -21,7 +21,8 @@ class JsonLevel extends LdtkJsonLevelComponent {
 
     // Load and render tile layers (will be added after entities, so we use priority)
     final parser = LdtkJsonParser();
-    final tileLayers = await parser.loadTileLayers(projectPath, levelIdentifier);
+    final tileLayers =
+        await parser.loadTileLayers(projectPath, levelIdentifier);
     for (final tileLayer in tileLayers) {
       final tileLayerComponent = LdtkTileLayerComponent(tileLayer);
       tileLayerComponent.priority = -1; // Below entities
@@ -34,7 +35,8 @@ class JsonLevel extends LdtkJsonLevelComponent {
     // Add background FIRST (lowest priority)
     if (levelData!.bgColor != null) {
       final bg = RectangleComponent(
-        size: Vector2(levelData!.width.toDouble(), levelData!.height.toDouble()),
+        size:
+            Vector2(levelData!.width.toDouble(), levelData!.height.toDouble()),
         paint: Paint()..color = levelData!.bgColor!,
       );
       bg.priority = -2; // Below everything

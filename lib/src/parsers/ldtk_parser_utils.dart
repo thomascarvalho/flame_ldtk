@@ -60,7 +60,8 @@ class LdtkParserUtils {
   /// Parses LDtk field instances array to a Map<String, dynamic>.
   ///
   /// Used for converting JSON format field instances to a map.
-  static Map<String, dynamic> parseFieldInstances(List<dynamic> fieldInstances) {
+  static Map<String, dynamic> parseFieldInstances(
+      List<dynamic> fieldInstances) {
     final fields = <String, dynamic>{};
     for (final field in fieldInstances) {
       if (field is Map<String, dynamic>) {
