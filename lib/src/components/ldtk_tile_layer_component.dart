@@ -55,11 +55,14 @@ class _LdtkTileComponent extends PositionComponent {
       size: Vector2.all(tileSize.toDouble()),
     );
 
-    // Handle flip flags (f: 0=no flip, 1=X flip, 2=Y flip, 3=XY flip)
-    if (tile.f == 1 || tile.f == 3) {
+    // Handle flip/rotation flags according to LDtk specification:
+    // Bit 0 (value 1): X flip
+    // Bit 1 (value 2): Y flip
+    // The flags can be combined (e.g., 3 = both flips)
+    if ((tile.f & 1) != 0) {
       spriteComponent.flipHorizontally();
     }
-    if (tile.f == 2 || tile.f == 3) {
+    if ((tile.f & 2) != 0) {
       spriteComponent.flipVertically();
     }
 

@@ -1,8 +1,8 @@
 /// A Flutter package for integrating LDtk levels into Flame Engine games.
 ///
 /// This library provides components and utilities to load and render
-/// LDtk levels using the Super Simple Export format.
-library flame_ldtk;
+/// LDtk levels using the Super Simple Export format or JSON format.
+library;
 
 // Models
 export 'src/models/ldtk_level.dart';
@@ -23,3 +23,6 @@ export 'src/components/ldtk_tile_layer_component.dart';
 
 // Additional models
 export 'src/models/ldtk_tile_layer.dart';
+
+// Utilities
+export 'src/utils/lru_cache.dart';

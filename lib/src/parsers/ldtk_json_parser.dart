@@ -6,14 +6,15 @@ import '../models/ldtk_entity.dart';
 import '../models/ldtk_intgrid.dart';
 import '../models/ldtk_json_models.dart';
 import '../models/ldtk_tile_layer.dart';
+import '../utils/lru_cache.dart';
 import 'ldtk_parser_utils.dart';
 
 /// Parser for LDtk JSON format (non-simplified export).
 class LdtkJsonParser {
-  // Cache for loaded assets
-  static final Map<String, LdtkJson> _projectCache = {};
-  static final Map<String, LdtkJsonLevel> _levelCache = {};
-  static final Map<String, LdtkLevel> _parsedLevelCache = {};
+  // Cache for loaded assets with LRU eviction
+  static final LruCache<String, LdtkJson> _projectCache = LruCache(10);
+  static final LruCache<String, LdtkJsonLevel> _levelCache = LruCache(20);
+  static final LruCache<String, LdtkLevel> _parsedLevelCache = LruCache(20);
 
   /// Clears all caches. Useful for hot-reload or memory management.
   static void clearCache() {
@@ -24,28 +25,38 @@ class LdtkJsonParser {
   }
 
   /// Loads and parses a LDtk project file.
+  ///
+  /// Throws [Exception] if the project file cannot be loaded or parsed.
   Future<LdtkJson> loadProject(String projectPath) async {
-    if (_projectCache.containsKey(projectPath)) {
-      return _projectCache[projectPath]!;
+    final cached = _projectCache.get(projectPath);
+    if (cached != null) {
+      return cached;
     }
 
-    final jsonString = await rootBundle.loadString(projectPath);
-    final json = jsonDecode(jsonString) as Map<String, dynamic>;
-    final project = LdtkJson.fromJson(json);
+    try {
+      final jsonString = await rootBundle.loadString(projectPath);
+      final json = jsonDecode(jsonString) as Map<String, dynamic>;
+      final project = LdtkJson.fromJson(json);
 
-    _projectCache[projectPath] = project;
-    return project;
+      _projectCache.put(projectPath, project);
+      return project;
+    } catch (e) {
+      throw Exception('Failed to load LDtk project at "$projectPath": $e');
+    }
   }
 
   /// Loads a level from a LDtk project.
   ///
   /// The [projectPath] should point to the .ldtk file.
   /// The [levelIdentifier] is the name of the level to load.
+  ///
+  /// Throws [Exception] if the level is not found in the project.
   Future<LdtkLevel> loadLevel(
       String projectPath, String levelIdentifier) async {
     final cacheKey = '$projectPath:$levelIdentifier';
-    if (_parsedLevelCache.containsKey(cacheKey)) {
-      return _parsedLevelCache[cacheKey]!;
+    final cached = _parsedLevelCache.get(cacheKey);
+    if (cached != null) {
+      return cached;
     }
 
     final project = await loadProject(projectPath);
@@ -53,7 +64,9 @@ class LdtkJsonParser {
     // Find the level by identifier
     final jsonLevel = project.levels.firstWhere(
       (level) => level.identifier == levelIdentifier,
-      orElse: () => throw Exception('Level "$levelIdentifier" not found'),
+      orElse: () => throw Exception(
+          'Level "$levelIdentifier" not found in project "$projectPath". '
+          'Available levels: ${project.levels.map((l) => l.identifier).join(", ")}'),
     );
 
     LdtkJsonLevel levelWithLayers = jsonLevel;
@@ -66,22 +79,29 @@ class LdtkJsonParser {
     }
 
     final parsedLevel = _parseLevel(levelWithLayers, project.defs);
-    _parsedLevelCache[cacheKey] = parsedLevel;
+    _parsedLevelCache.put(cacheKey, parsedLevel);
     return parsedLevel;
   }
 
   /// Loads an external level file (.ldtkl).
+  ///
+  /// Throws [Exception] if the level file cannot be loaded or parsed.
   Future<LdtkJsonLevel> _loadExternalLevel(String path) async {
-    if (_levelCache.containsKey(path)) {
-      return _levelCache[path]!;
+    final cached = _levelCache.get(path);
+    if (cached != null) {
+      return cached;
     }
 
-    final jsonString = await rootBundle.loadString(path);
-    final json = jsonDecode(jsonString) as Map<String, dynamic>;
-    final level = LdtkJsonLevel.fromJson(json);
+    try {
+      final jsonString = await rootBundle.loadString(path);
+      final json = jsonDecode(jsonString) as Map<String, dynamic>;
+      final level = LdtkJsonLevel.fromJson(json);
 
-    _levelCache[path] = level;
-    return level;
+      _levelCache.put(path, level);
+      return level;
+    } catch (e) {
+      throw Exception('Failed to load external level at "$path": $e');
+    }
   }
 
   /// Converts a LdtkJsonLevel to a LdtkLevel.
@@ -173,6 +193,8 @@ class LdtkJsonParser {
   /// Loads tile layers for a level.
   ///
   /// Returns a list of [LdtkTileLayer] with loaded tileset images.
+  ///
+  /// Throws [Exception] if the level or tileset is not found.
   Future<List<LdtkTileLayer>> loadTileLayers(
     String projectPath,
     String levelIdentifier,
@@ -182,7 +204,9 @@ class LdtkJsonParser {
     // Find the level
     final jsonLevel = project.levels.firstWhere(
       (level) => level.identifier == levelIdentifier,
-      orElse: () => throw Exception('Level "$levelIdentifier" not found'),
+      orElse: () => throw Exception(
+          'Level "$levelIdentifier" not found in project "$projectPath". '
+          'Available levels: ${project.levels.map((l) => l.identifier).join(", ")}'),
     );
 
     LdtkJsonLevel levelWithLayers = jsonLevel;
@@ -210,7 +234,8 @@ class LdtkJsonParser {
         final tilesetDef = project.defs.tilesets.firstWhere(
           (ts) => ts.uid == layer.tilesetDefUid,
           orElse: () => throw Exception(
-            'Tileset with uid ${layer.tilesetDefUid} not found',
+            'Tileset with uid ${layer.tilesetDefUid} not found in project "$projectPath". '
+            'Available tilesets: ${project.defs.tilesets.map((t) => '${t.identifier} (uid: ${t.uid})').join(", ")}',
           ),
         );
 

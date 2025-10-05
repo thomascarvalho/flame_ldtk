@@ -6,13 +6,14 @@ import 'package:flutter/services.dart';
 import '../models/ldtk_level.dart';
 import '../models/ldtk_entity.dart';
 import '../models/ldtk_intgrid.dart';
+import '../utils/lru_cache.dart';
 import 'ldtk_parser_utils.dart';
 
 /// Parser for LDtk Super Simple Export format.
 class LdtkSuperSimpleParser {
-  // Cache for loaded assets
-  static final Map<String, LdtkLevel> _levelCache = {};
-  static final Map<String, String> _stringCache = {};
+  // Cache for loaded assets with LRU eviction
+  static final LruCache<String, LdtkLevel> _levelCache = LruCache(20);
+  static final LruCache<String, String> _stringCache = LruCache(50);
 
   /// Clears all caches. Useful for hot-reload or memory management.
   static void clearCache() {
@@ -36,49 +37,56 @@ class LdtkSuperSimpleParser {
   }
 
   /// Parses entities and metadata from data.json.
+  ///
+  /// Throws [Exception] if the file cannot be loaded or parsed.
   Future<LdtkLevel> parseDataJson(String path) async {
-    if (_levelCache.containsKey(path)) {
-      return _levelCache[path]!;
+    final cached = _levelCache.get(path);
+    if (cached != null) {
+      return cached;
     }
 
-    final jsonString = await rootBundle.loadString(path);
-    final json = jsonDecode(jsonString) as Map<String, dynamic>;
+    try {
+      final jsonString = await rootBundle.loadString(path);
+      final json = jsonDecode(jsonString) as Map<String, dynamic>;
 
-    // Parse metadata
-    final name = json['identifier'] as String;
-    final width = json['width'] as int;
-    final height = json['height'] as int;
-    final bgColorStr = json['bgColor'] as String?;
-    final customFields = json['customFields'] as Map<String, dynamic>? ?? {};
+      // Parse metadata
+      final name = json['identifier'] as String;
+      final width = json['width'] as int;
+      final height = json['height'] as int;
+      final bgColorStr = json['bgColor'] as String?;
+      final customFields = json['customFields'] as Map<String, dynamic>? ?? {};
 
-    // Parse background color from hex string
-    final bgColor = LdtkParserUtils.parseHexColor(bgColorStr);
+      // Parse background color from hex string
+      final bgColor = LdtkParserUtils.parseHexColor(bgColorStr);
 
-    // Parse entities
-    final List<LdtkEntity> entities = [];
-    final entitiesData = json['entities'] as Map<String, dynamic>? ?? {};
+      // Parse entities
+      final List<LdtkEntity> entities = [];
+      final entitiesData = json['entities'] as Map<String, dynamic>? ?? {};
 
-    for (final entry in entitiesData.entries) {
-      // final entityType = entry.key;
-      final entityList = entry.value as List;
+      for (final entry in entitiesData.entries) {
+        // final entityType = entry.key;
+        final entityList = entry.value as List;
 
-      for (final entityData in entityList) {
-        final entity = _parseEntity(entityData as Map<String, dynamic>);
-        entities.add(entity);
+        for (final entityData in entityList) {
+          final entity = _parseEntity(entityData as Map<String, dynamic>);
+          entities.add(entity);
+        }
       }
+
+      final level = LdtkLevel(
+        name: name,
+        width: width,
+        height: height,
+        bgColor: bgColor,
+        entities: entities,
+        customData: customFields,
+      );
+
+      _levelCache.put(path, level);
+      return level;
+    } catch (e) {
+      throw Exception('Failed to parse data.json at "$path": $e');
     }
-
-    final level = LdtkLevel(
-      name: name,
-      width: width,
-      height: height,
-      bgColor: bgColor,
-      entities: entities,
-      customData: customFields,
-    );
-
-    _levelCache[path] = level;
-    return level;
   }
 
   /// Helper method to parse a single entity from JSON.
@@ -103,10 +111,11 @@ class LdtkSuperSimpleParser {
   Future<LdtkIntGrid> parseIntGridCsv(
       String path, String layerName, int cellSize) async {
     // Cache CSV string loading
-    if (!_stringCache.containsKey(path)) {
-      _stringCache[path] = await rootBundle.loadString(path);
+    var csvString = _stringCache.get(path);
+    if (csvString == null) {
+      csvString = await rootBundle.loadString(path);
+      _stringCache.put(path, csvString);
     }
-    final csvString = _stringCache[path]!;
 
     // Parse CSV with explicit line separator handling
     final csvData = const CsvToListConverter(
@@ -114,20 +123,33 @@ class LdtkSuperSimpleParser {
       shouldParseNumbers: true,
     ).convert(csvString);
 
-    // Convert CSV data to 2D grid of integers, filtering empty rows in one pass
-    List<List<int>> grid = [];
+    // Convert CSV data to 2D grid of integers, filtering empty rows
+    final grid = <List<int>>[];
+    bool hasTrailingZeros = true;
+
     for (final row in csvData) {
       if (row.isEmpty) continue;
-      grid.add([
+
+      final intRow = [
         for (final cell in row)
           cell is int ? cell : int.tryParse(cell.toString()) ?? 0
-      ]);
+      ];
+
+      // Check if this row breaks the trailing zero pattern
+      if (hasTrailingZeros && intRow.isNotEmpty && intRow.last != 0) {
+        hasTrailingZeros = false;
+      }
+
+      grid.add(intRow);
     }
 
     // Remove trailing empty column if all rows have it (from trailing comma in LDtk CSV export)
-    if (grid.isNotEmpty &&
-        grid.every((row) => row.isNotEmpty && row.last == 0)) {
-      grid = grid.map((row) => row.sublist(0, row.length - 1)).toList();
+    if (hasTrailingZeros && grid.isNotEmpty) {
+      for (int i = 0; i < grid.length; i++) {
+        if (grid[i].isNotEmpty) {
+          grid[i] = grid[i].sublist(0, grid[i].length - 1);
+        }
+      }
     }
 
     return LdtkIntGrid(
@@ -155,20 +177,21 @@ class LdtkSuperSimpleParser {
     for (final layerName in layerNames) {
       final csvPath = '$levelPath/$layerName.csv';
 
-      // Parse with temporary cellSize, will be recalculated after cleaning
-      final intGrid = await parseIntGridCsv(csvPath, layerName, 1);
-
-      // Use provided cellSize or calculate from grid dimensions
-      final gridWidth = intGrid.width;
+      // Calculate cellSize first if not provided
+      // We parse once with a placeholder value, then check grid width
+      final tempIntGrid = await parseIntGridCsv(csvPath, layerName, 1);
+      final gridWidth = tempIntGrid.width;
       final finalCellSize =
           cellSize ?? (gridWidth > 0 ? level.width ~/ gridWidth : 8);
 
-      // Create new IntGrid with correct cellSize
-      final correctedIntGrid = LdtkIntGrid(
-        layerName: layerName,
-        grid: intGrid.grid,
-        cellSize: finalCellSize,
-      );
+      // Only create new IntGrid if cellSize differs
+      final correctedIntGrid = finalCellSize == 1
+          ? tempIntGrid
+          : LdtkIntGrid(
+              layerName: layerName,
+              grid: tempIntGrid.grid,
+              cellSize: finalCellSize,
+            );
 
       intGrids[layerName] = correctedIntGrid;
     }

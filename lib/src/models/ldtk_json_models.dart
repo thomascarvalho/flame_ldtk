@@ -20,15 +20,20 @@ class LdtkJson {
   });
 
   factory LdtkJson.fromJson(Map<String, dynamic> json) {
-    return LdtkJson(
-      jsonVersion: json['jsonVersion'] as String,
-      externalLevels: json['externalLevels'] as bool? ?? false,
-      simplifiedExport: json['simplifiedExport'] as bool? ?? false,
-      defs: LdtkDefinitions.fromJson(json['defs'] as Map<String, dynamic>),
-      levels: (json['levels'] as List)
-          .map((e) => LdtkJsonLevel.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
+    try {
+      return LdtkJson(
+        jsonVersion: json['jsonVersion'] as String? ?? 'unknown',
+        externalLevels: json['externalLevels'] as bool? ?? false,
+        simplifiedExport: json['simplifiedExport'] as bool? ?? false,
+        defs: LdtkDefinitions.fromJson(
+            json['defs'] as Map<String, dynamic>? ?? {}),
+        levels: (json['levels'] as List? ?? [])
+            .map((e) => LdtkJsonLevel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+    } catch (e) {
+      throw Exception('Failed to parse LdtkJson: $e');
+    }
   }
 }
 
@@ -45,17 +50,21 @@ class LdtkDefinitions {
   });
 
   factory LdtkDefinitions.fromJson(Map<String, dynamic> json) {
-    return LdtkDefinitions(
-      layers: (json['layers'] as List)
-          .map((e) => LdtkLayerDef.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      entities: (json['entities'] as List)
-          .map((e) => LdtkEntityDef.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      tilesets: (json['tilesets'] as List)
-          .map((e) => LdtkTilesetDef.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
+    try {
+      return LdtkDefinitions(
+        layers: (json['layers'] as List? ?? [])
+            .map((e) => LdtkLayerDef.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        entities: (json['entities'] as List? ?? [])
+            .map((e) => LdtkEntityDef.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        tilesets: (json['tilesets'] as List? ?? [])
+            .map((e) => LdtkTilesetDef.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+    } catch (e) {
+      throw Exception('Failed to parse LdtkDefinitions: $e');
+    }
   }
 }
 
@@ -158,19 +167,24 @@ class LdtkJsonLevel {
   });
 
   factory LdtkJsonLevel.fromJson(Map<String, dynamic> json) {
-    return LdtkJsonLevel(
-      identifier: json['identifier'] as String,
-      pxWid: json['pxWid'] as int,
-      pxHei: json['pxHei'] as int,
-      bgColor: json['__bgColor'] as String? ?? json['bgColor'] as String?,
-      externalRelPath: json['externalRelPath'] as String?,
-      layerInstances: json['layerInstances'] == null
-          ? null
-          : (json['layerInstances'] as List)
-              .map((e) => LdtkLayerInstance.fromJson(e as Map<String, dynamic>))
-              .toList(),
-      fieldInstances: json['fieldInstances'] as List? ?? [],
-    );
+    try {
+      return LdtkJsonLevel(
+        identifier: json['identifier'] as String? ?? 'unknown',
+        pxWid: json['pxWid'] as int? ?? 0,
+        pxHei: json['pxHei'] as int? ?? 0,
+        bgColor: json['__bgColor'] as String? ?? json['bgColor'] as String?,
+        externalRelPath: json['externalRelPath'] as String?,
+        layerInstances: json['layerInstances'] == null
+            ? null
+            : (json['layerInstances'] as List)
+                .map((e) =>
+                    LdtkLayerInstance.fromJson(e as Map<String, dynamic>))
+                .toList(),
+        fieldInstances: json['fieldInstances'] as List? ?? [],
+      );
+    } catch (e) {
+      throw Exception('Failed to parse LdtkJsonLevel: $e');
+    }
   }
 }
 

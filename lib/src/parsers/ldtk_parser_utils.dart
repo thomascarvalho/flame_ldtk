@@ -1,10 +1,11 @@
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
+import '../utils/lru_cache.dart';
 
 /// Utility functions shared between LDtk parsers.
 class LdtkParserUtils {
-  // Cache for loaded images
-  static final Map<String, ui.Image> _imageCache = {};
+  // Cache for loaded images with LRU eviction (max 50 images)
+  static final LruCache<String, ui.Image> _imageCache = LruCache(50);
 
   /// Clears the image cache.
   static void clearImageCache() {
@@ -33,19 +34,26 @@ class LdtkParserUtils {
   }
 
   /// Loads an image from the given asset path with caching.
+  ///
+  /// Throws [Exception] if the image cannot be loaded or decoded.
   static Future<ui.Image> loadImage(String path) async {
-    if (_imageCache.containsKey(path)) {
-      return _imageCache[path]!;
+    final cached = _imageCache.get(path);
+    if (cached != null) {
+      return cached;
     }
 
-    final data = await rootBundle.load(path);
-    final bytes = data.buffer.asUint8List();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    final image = frame.image;
+    try {
+      final data = await rootBundle.load(path);
+      final bytes = data.buffer.asUint8List();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final image = frame.image;
 
-    _imageCache[path] = image;
-    return image;
+      _imageCache.put(path, image);
+      return image;
+    } catch (e) {
+      throw Exception('Failed to load image at "$path": $e');
+    }
   }
 
   /// Extracts the base path from a file path.
@@ -56,7 +64,7 @@ class LdtkParserUtils {
     return lastSlash != -1 ? filePath.substring(0, lastSlash) : '';
   }
 
-  /// Parses LDtk field instances array to a Map<String, dynamic>.
+  /// Parses LDtk field instances array to a Map
   ///
   /// Used for converting JSON format field instances to a map.
   static Map<String, dynamic> parseFieldInstances(
