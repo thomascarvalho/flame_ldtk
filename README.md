@@ -3,6 +3,7 @@
 A Flutter package for integrating [LDtk](https://ldtk.io/) levels into [Flame Engine](https://flame-engine.org/) games.
 
 [![pub package](https://img.shields.io/pub/v/flame_ldtk.svg)](https://pub.dev/packages/flame_ldtk)
+[![codecov](https://codecov.io/github/thomascarvalho/flame_ldtk/graph/badge.svg?token=SZUY19JFAN)](https://codecov.io/github/thomascarvalho/flame_ldtk)
 
 ## Features
 
