@@ -31,8 +31,8 @@ class LdtkSuperSimpleParser {
     return await parseDataJson(dataJsonPath);
   }
 
-  /// Loads the composite image for a level.
-  Future<ui.Image> loadComposite(String path) async {
+  /// Loads an image from the specified asset path.
+  Future<ui.Image> loadImage(String path) async {
     return LdtkParserUtils.loadImage(path);
   }
 
@@ -55,6 +55,13 @@ class LdtkSuperSimpleParser {
       final height = json['height'] as int;
       final bgColorStr = json['bgColor'] as String?;
       final customFields = json['customFields'] as Map<String, dynamic>? ?? {};
+      final layers = json['layers'] as List<dynamic>? ?? [];
+
+      // Combine customFields with layers
+      final customData = <String, dynamic>{
+        ...customFields,
+        'layers': layers,
+      };
 
       // Parse background color from hex string
       final bgColor = LdtkParserUtils.parseHexColor(bgColorStr);
@@ -79,7 +86,7 @@ class LdtkSuperSimpleParser {
         height: height,
         bgColor: bgColor,
         entities: entities,
-        customData: customFields,
+        customData: customData,
       );
 
       _levelCache.put(path, level);
@@ -125,7 +132,7 @@ class LdtkSuperSimpleParser {
 
     // Convert CSV data to 2D grid of integers, filtering empty rows
     final grid = <List<int>>[];
-    bool hasTrailingZeros = true;
+    int maxColumns = 0;
 
     for (final row in csvData) {
       if (row.isEmpty) continue;
@@ -135,18 +142,33 @@ class LdtkSuperSimpleParser {
           cell is int ? cell : int.tryParse(cell.toString()) ?? 0
       ];
 
-      // Check if this row breaks the trailing zero pattern
-      if (hasTrailingZeros && intRow.isNotEmpty && intRow.last != 0) {
-        hasTrailingZeros = false;
+      if (intRow.length > maxColumns) {
+        maxColumns = intRow.length;
       }
 
       grid.add(intRow);
     }
 
-    // Remove trailing empty column if all rows have it (from trailing comma in LDtk CSV export)
-    if (hasTrailingZeros && grid.isNotEmpty) {
-      for (int i = 0; i < grid.length; i++) {
-        if (grid[i].isNotEmpty) {
+    // Normalize all rows to have the same length (pad with zeros if needed)
+    for (int i = 0; i < grid.length; i++) {
+      while (grid[i].length < maxColumns) {
+        grid[i].add(0);
+      }
+    }
+
+    // Check if the last column is all zeros (trailing comma from LDtk export)
+    if (maxColumns > 0 && grid.isNotEmpty) {
+      bool lastColumnAllZeros = true;
+      for (final row in grid) {
+        if (row.last != 0) {
+          lastColumnAllZeros = false;
+          break;
+        }
+      }
+
+      // Remove trailing empty column if all values are zero
+      if (lastColumnAllZeros) {
+        for (int i = 0; i < grid.length; i++) {
           grid[i] = grid[i].sublist(0, grid[i].length - 1);
         }
       }

@@ -156,6 +156,12 @@ class LdtkJsonLevel {
   final List<LdtkLayerInstance>? layerInstances;
   final List<dynamic> fieldInstances;
 
+  // Background image properties
+  final String? bgRelPath;
+  final String? bgPos;
+  final double? bgPivotX;
+  final double? bgPivotY;
+
   const LdtkJsonLevel({
     required this.identifier,
     required this.pxWid,
@@ -164,6 +170,10 @@ class LdtkJsonLevel {
     this.externalRelPath,
     this.layerInstances,
     required this.fieldInstances,
+    this.bgRelPath,
+    this.bgPos,
+    this.bgPivotX,
+    this.bgPivotY,
   });
 
   factory LdtkJsonLevel.fromJson(Map<String, dynamic> json) {
@@ -181,6 +191,10 @@ class LdtkJsonLevel {
                     LdtkLayerInstance.fromJson(e as Map<String, dynamic>))
                 .toList(),
         fieldInstances: json['fieldInstances'] as List? ?? [],
+        bgRelPath: json['bgRelPath'] as String?,
+        bgPos: json['bgPos'] as String?,
+        bgPivotX: (json['bgPivotX'] as num?)?.toDouble(),
+        bgPivotY: (json['bgPivotY'] as num?)?.toDouble(),
       );
     } catch (e) {
       throw Exception('Failed to parse LdtkJsonLevel: $e');

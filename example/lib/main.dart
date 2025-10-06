@@ -15,7 +15,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  bool useJsonFormat = true;
+  bool useJsonFormat = false;
 
   @override
   Widget build(BuildContext context) {

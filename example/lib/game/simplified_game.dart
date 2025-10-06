@@ -15,10 +15,10 @@ class SimplifiedGame extends FlameGame with KeyboardEvents {
 
     // Load the level with collision layer
     final level = SimplifiedLevel();
-    await level.loadLevel(
-      'assets/world-simplified/simplified/Level_0',
-      intGridLayers: ['Collisions'],
-    );
+    await level.loadLevel('assets/world-simplified/simplified/Level_0',
+        intGridLayers: ['Collisions'],
+        ldtklPath: 'assets/world-simplified/Level_0.ldtkl',
+        assetBasePath: 'assets');
 
     await add(level);
 

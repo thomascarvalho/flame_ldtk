@@ -8,10 +8,15 @@ class JsonLevel extends LdtkJsonLevelComponent {
   Player? player;
 
   @override
-  Future<void> loadLevel(String projectPath, String levelIdentifier) async {
+  Future<void> loadLevel(
+    String projectPath,
+    String levelIdentifier, {
+    bool loadBackground = true,
+  }) async {
     // First, call super to load level data and trigger onEntitiesLoaded
     // BUT we'll add background/tiles in onEntitiesLoaded BEFORE adding player
-    await super.loadLevel(projectPath, levelIdentifier);
+    await super.loadLevel(projectPath, levelIdentifier,
+        loadBackground: loadBackground);
 
     // Set component size
     size = Vector2(

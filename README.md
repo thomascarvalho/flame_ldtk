@@ -6,13 +6,16 @@ A Flutter package for integrating [LDtk](https://ldtk.io/) levels into [Flame En
 
 ## Features
 
-- 🎮 **Dual Format Support** - Load LDtk levels in both Super Simple Export and standard JSON format
-- 🗺️ **Level Rendering** - Automatic composite image loading and rendering
+- 🎮 **Super Simple Export Support** - Optimized loading of LDtk levels using Super Simple Export format
+- 🗺️ **Level Rendering** - Individual layer rendering with transparency support
+- 🖼️ **Background Images** - Load background images from .ldtkl files (basic positioning modes)
 - 🎯 **Entity Parsing** - Extract entities with positions, sizes, custom fields, and colors
 - 🧱 **IntGrid Support** - CSV-based IntGrid for collisions and game logic
 - 🎨 **Flexible Architecture** - Override hooks to customize entity rendering
 - 📦 **Generic Design** - No built-in collision logic, adapt to your game type
-- ⚡ **Optimized Performance** - Shared utilities and centralized caching for both parsers
+- ⚡ **Optimized Performance** - LRU cache system and fast CSV parsing
+
+> 📖 **Looking for JSON format support?** See [JSON_FORMAT.md](JSON_FORMAT.md) (experimental, not fully implemented)
 
 ## Installation
 
@@ -26,10 +29,7 @@ dependencies:
 
 ## LDtk Setup
 
-This package supports **two LDtk export formats**:
-
-### Option 1: Super Simple Export (Recommended)
-**Best for:** Fast loading, minimal memory usage, mobile/web games
+### Super Simple Export
 
 1. Create your level in [LDtk](https://ldtk.io/)
 2. Go to **Project Settings → Super Simple Export**
@@ -38,20 +38,12 @@ This package supports **two LDtk export formats**:
 5. Save your project to generate the export files
 
 Each exported level will contain:
-- `_composite.png` - Complete level visual
-- `data.json` - Level metadata and entities (489B for simple levels)
+- `_composite.png` - Complete level visual (optional, use individual layers instead)
+- `[LayerName].png` - Individual layer images (e.g., `Tiles.png`)
+- `data.json` - Level metadata and entities (lightweight, ~500B for simple levels)
 - `[LayerName].csv` - IntGrid layers (for collisions, etc.)
 
-### Option 2: Standard JSON Export
-**Best for:** Access to full project definitions, fewer files per level
-
-1. Create your level in [LDtk](https://ldtk.io/)
-2. In **Project Settings**, enable **"Save levels to separate files"** (optional)
-3. Save your project to generate `.ldtk` and `.ldtkl` files
-
-Your project structure will be:
-- `world.ldtk` - Main project file with definitions
-- `world/Level_0.ldtkl` - Individual level files (if using external levels)
+**For background images:** Keep the `.ldtkl` file to read background configuration.
 
 ## Basic Usage
 
@@ -60,16 +52,14 @@ Your project structure will be:
 ```yaml
 flutter:
   assets:
-    # For Super Simple Export
     - assets/world/simplified/Level_0/
-    # For JSON format
-    - assets/world.ldtk
-    - assets/world/
+    - assets/world/Level_0.ldtkl        # Optional: for background images
+    - assets/background.png              # Optional: your background image
 ```
 
 ### 2. Load a level in your game
 
-#### Using Super Simple Format (Recommended)
+**Basic usage:**
 ```dart
 import 'package:flame/game.dart';
 import 'package:flame_ldtk/flame_ldtk.dart';
@@ -84,7 +74,7 @@ class MyGame extends FlameGame {
 }
 ```
 
-#### Using JSON Format
+**With collisions and background image:**
 ```dart
 import 'package:flame/game.dart';
 import 'package:flame_ldtk/flame_ldtk.dart';
@@ -92,24 +82,27 @@ import 'package:flame_ldtk/flame_ldtk.dart';
 class MyGame extends FlameGame {
   @override
   Future<void> onLoad() async {
-    final level = LdtkJsonLevelComponent();
-    await level.loadLevel('assets/world.ldtk', 'Level_0');
+    final level = LdtkLevelComponent();
+    await level.loadLevel(
+      'assets/world/simplified/Level_0',
+      intGridLayers: ['Collisions'],           // Load collision layer
+      ldtklPath: 'assets/world/Level_0.ldtkl', // For background image
+      assetBasePath: 'assets',                  // Where background images are located
+      // useComposite: false,                   // Default: loads individual layers
+    );
     await add(level);
   }
 }
 ```
 
-> **Note:** Both components provide the same API! The only difference is the format they load.
-
 ## Working with Entities
 
 ### Customize entity rendering
 
-Override `onEntitiesLoaded()` to handle your entities (works with both components):
+Override `onEntitiesLoaded()` to handle your entities:
 
 ```dart
-// Works with both LdtkLevelComponent and LdtkJsonLevelComponent!
-class MyLevelComponent extends LdtkLevelComponent {  // or LdtkJsonLevelComponent
+class MyLevelComponent extends LdtkLevelComponent {
   @override
   Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
     for (final entity in entities) {
@@ -387,9 +380,9 @@ class PlayerComponent extends PositionComponent {
 
 ## API Reference
 
-### LdtkLevelComponent (Super Simple Format)
+### LdtkLevelComponent
 
-Main component for loading and displaying LDtk levels in Super Simple Export format.
+Main component for loading and displaying LDtk levels.
 
 ```dart
 // Load a level
@@ -408,28 +401,40 @@ Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
 }
 ```
 
-### LdtkJsonLevelComponent (JSON Format)
+#### Background Images
 
-Component for loading and displaying LDtk levels in standard JSON format.
+Super Simple Export doesn't include background image metadata in its exported files. To use background images, you need to read the background configuration from the original `.ldtkl` file:
 
 ```dart
-// Load a level
 await levelComponent.loadLevel(
-  'assets/world.ldtk',      // Project file
-  'Level_0',                 // Level identifier
+  'assets/world/simplified/Level_0',
+  intGridLayers: ['Collisions'],
+  ldtklPath: 'assets/world/Level_0.ldtkl',    // Path to .ldtkl file for background metadata
+  assetBasePath: 'assets',                     // Base path for resolving background images
+  useComposite: false,                         // Use individual layers for transparency
 );
-
-// Access level data (same as LdtkLevelComponent)
-LdtkLevel? data = levelComponent.levelData;
-
-// Override to customize entity creation (same API)
-@override
-Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
-  // Your custom entity creation logic
-}
 ```
 
-> **Both components share the same API** - just swap them based on your export format!
+**Parameters:**
+- `ldtklPath` - Path to the `.ldtkl` file containing background image configuration
+- `assetBasePath` - Base path for resolving background image paths (useful when LDtk's `bgRelPath` is relative to a specific folder)
+- `useComposite` - Set to `false` to load individual layer images instead of the composite (allows transparency for backgrounds to show through)
+
+**Supported background positioning modes:**
+- `Cover` - Background covers the entire level (default)
+- `Contain` - Background is scaled to fit within level bounds while maintaining aspect ratio
+- `Unscaled` - Background uses its original size
+
+**Note:** Advanced LDtk background options (custom scale, crop rectangles) are not currently supported.
+
+**Example in pubspec.yaml:**
+```yaml
+flutter:
+  assets:
+    - assets/world/simplified/Level_0/    # Super Simple Export files
+    - assets/world/Level_0.ldtkl          # For background metadata
+    - assets/background.png               # Your background image
+```
 
 ### LdtkLevel
 
@@ -523,14 +528,36 @@ if (water?.isSolidAtPixel(x, y) ?? false) {
 
 > **Note:** I created this project for a game I'm currently developing. The roadmap may evolve based on my needs. The **Super Simple Export** mode is the most tested and stable format.
 
+### ✅ Completed
 - [x] Super Simple Export support
-- [x] JSON Export support
-- [x] Custom fields extraction for both formats
-- [x] Shared utilities and optimized performance
-- [ ] PNG-based IntGrid parsing
-- [ ] Tile layer support (individual tiles) ?
-- [ ] Level background rendering ?
-- [ ] Hot reload support ?
+- [x] Custom fields extraction
+- [x] LRU cache system with memory limits
+- [x] Improved error handling with detailed messages
+- [x] Individual Layer Rendering - Load and render tile layers separately (via `useComposite: false` by default)
+- [x] Background Images (partial) - Basic positioning modes (Cover, Contain, Unscaled) supported. Advanced options (custom scale, crop rectangles) not yet implemented.
+- [x] JSON Export support (experimental) - See [JSON_FORMAT.md](JSON_FORMAT.md)
+
+### Planned features
+- [ ] AutoLayers Support - Render auto-generated tile layers
+- [ ] Multi-Level World System - World component with level switching and transitions
+- [ ] Parallax Backgrounds - Support for parallax effects with background images
+- [ ] Advanced Background Options - Custom scale and crop rectangle support
+- [ ] Tile Animations - Animated tileset support with metadata parsing
+
+### Other ideas
+- [ ] Entity Registry/Factory - Automatic entity-to-component mapping system
+- [ ] Collision Generation from IntGrid - Automatic hitbox generation (polygons/rectangles)
+- [ ] Hot Reload Support - Watch LDtk files and reload in development
+- [ ] Debug Renderer - Visualize grids, entity bounds, collisions, and IntGrid values
+- [ ] Level Transitions - Fade, slide, and custom transition effects
+- [ ] Platformer Behavior Mixin - Reusable gravity and collision behaviors
+
+### 🔧 Technical improvements ideas
+- [ ] Typed Field Values - Strong typing for Point, Color, Enum, EntityRef, Array fields
+- [ ] Enum Support - Parse and use LDtk enum definitions
+- [ ] Render Optimization - Tile batching, atlases, and off-screen culling
+- [ ] Level Streaming - Progressive loading for large levels
+- [ ] PNG-based IntGrid parsing - Alternative to CSV format
 
 ## Contributing
 
@@ -542,5 +569,7 @@ MIT License - see LICENSE file for details.
 
 ## Credits
 
-- [LDtk](https://ldtk.io/) - Level Designer Toolkit by Sébastien Bénard
+- [LDtk](https://ldtk.io/) - Level Designer Toolkit by Sébastien Benard
 - [Flame](https://flame-engine.org/) - Flutter game engine
+- [Kenney](https://kenney.nl/) - Assets on `example/` project
+

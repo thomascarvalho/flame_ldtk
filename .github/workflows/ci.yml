@@ -44,13 +44,33 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Run tests
+      - name: Run unit tests
         run: flutter test --coverage --reporter expanded
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload unit test coverage to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          files: ./coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-unittests
           fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Get example dependencies
+        working-directory: ./example
+        run: flutter pub get
+
+      - name: Run integration tests (example)
+        working-directory: ./example
+        run: flutter test --coverage --reporter expanded
+
+      - name: Upload integration test coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./example/coverage/lcov.info
+          flags: integration
+          name: codecov-integration
+          fail_ci_if_error: false
+
+      
