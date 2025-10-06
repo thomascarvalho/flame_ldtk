@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/thomascarvalho/flame_ldtk/compare/v0.2.2...v0.3.0) (2025-10-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* LdtkLevelComponent constructor now requires a LdtkWorld parameter. LdtkLevelComponent.loadLevel() now takes a level identifier instead of a full path.
+
+### Features
+
+* add LdtkWorld for simplified level management and entity tile support ([d194218](https://github.com/thomascarvalho/flame_ldtk/commit/d194218c5cd4ccb30ab65eaa7103e816847d6920))
+
 ## [0.2.2](https://github.com/thomascarvalho/flame_ldtk/compare/v0.2.1...v0.2.2) (2025-10-06)
 
 
