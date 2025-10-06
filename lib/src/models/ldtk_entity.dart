@@ -19,11 +19,16 @@ class LdtkEntity {
   /// Optional color tag for the entity.
   final Color? color;
 
+  /// Optional sprite from the entity's tile definition.
+  /// This sprite can be used to render the entity's visual representation.
+  final Sprite? sprite;
+
   const LdtkEntity({
     required this.identifier,
     required this.position,
     required this.size,
     this.fields = const {},
     this.color,
+    this.sprite,
   });
 }

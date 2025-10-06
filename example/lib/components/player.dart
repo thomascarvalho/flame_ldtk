@@ -32,13 +32,21 @@ class Player extends PositionComponent {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Render the player
-    final color = entity.color ?? Colors.blue;
-    final rect = RectangleComponent(
-      size: size,
-      paint: Paint()..color = color,
-    );
-    await add(rect);
+    // Render the player using sprite if available, otherwise use colored rectangle
+    if (entity.sprite != null) {
+      final spriteComponent = SpriteComponent(
+        sprite: entity.sprite,
+        size: size,
+      );
+      await add(spriteComponent);
+    } else {
+      final color = entity.color ?? Colors.blue;
+      final rect = RectangleComponent(
+        size: size,
+        paint: Paint()..color = color,
+      );
+      await add(rect);
+    }
   }
 
   @override

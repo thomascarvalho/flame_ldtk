@@ -7,11 +7,14 @@ A Flutter package for integrating [LDtk](https://ldtk.io/) levels into [Flame En
 
 ## Features
 
+- 🌍 **World Management** - Simplified API with `LdtkWorld` for managing levels and assets
 - 🎮 **Super Simple Export Support** - Optimized loading of LDtk levels using Super Simple Export format
 - 🗺️ **Level Rendering** - Individual layer rendering with transparency support
-- 🖼️ **Background Images** - Load background images from .ldtkl files (basic positioning modes)
-- 🎯 **Entity Parsing** - Extract entities with positions, sizes, custom fields, and colors
+- 🖼️ **Background Images** - Automatic background loading with positioning modes
+- 🎯 **Entity Parsing** - Extract entities with positions, sizes, custom fields, colors, and sprites
+- 🖼️ **Entity Tiles** - Automatic sprite loading from entity tiles defined in LDtk
 - 🧱 **IntGrid Support** - CSV-based IntGrid for collisions and game logic
+- 🔄 **Level Switching** - Change levels dynamically without recreating components
 - 🎨 **Flexible Architecture** - Override hooks to customize entity rendering
 - 📦 **Generic Design** - No built-in collision logic, adapt to your game type
 - ⚡ **Optimized Performance** - LRU cache system and fast CSV parsing
@@ -53,14 +56,16 @@ Each exported level will contain:
 ```yaml
 flutter:
   assets:
-    - assets/world/simplified/Level_0/
-    - assets/world/Level_0.ldtkl        # Optional: for background images
-    - assets/background.png              # Optional: your background image
+    - assets/world/simplified/Level_0/  # Simplified export folder
+    - assets/world/Level_0.ldtkl        # For background and entity tiles
+    - assets/world.ldtk                  # LDtk project file
+    - assets/background.png              # Background image
+    - assets/tilemap.png                 # Tileset for entity sprites
 ```
 
 ### 2. Load a level in your game
 
-**Basic usage:**
+**Simple usage with LdtkWorld:**
 ```dart
 import 'package:flame/game.dart';
 import 'package:flame_ldtk/flame_ldtk.dart';
@@ -68,14 +73,18 @@ import 'package:flame_ldtk/flame_ldtk.dart';
 class MyGame extends FlameGame {
   @override
   Future<void> onLoad() async {
-    final level = LdtkLevelComponent();
-    await level.loadLevel('assets/world/simplified/Level_0');
+    // Load the world once
+    final world = await LdtkWorld.load('assets/world.ldtk');
+
+    // Create and load a level
+    final level = LdtkLevelComponent(world);
+    await level.loadLevel('Level_0');
     await add(level);
   }
 }
 ```
 
-**With collisions and background image:**
+**With collisions and background:**
 ```dart
 import 'package:flame/game.dart';
 import 'package:flame_ldtk/flame_ldtk.dart';
@@ -83,15 +92,38 @@ import 'package:flame_ldtk/flame_ldtk.dart';
 class MyGame extends FlameGame {
   @override
   Future<void> onLoad() async {
-    final level = LdtkLevelComponent();
-    await level.loadLevel(
-      'assets/world/simplified/Level_0',
-      intGridLayers: ['Collisions'],           // Load collision layer
-      ldtklPath: 'assets/world/Level_0.ldtkl', // For background image
-      assetBasePath: 'assets',                  // Where background images are located
-      // useComposite: false,                   // Default: loads individual layers
-    );
+    // Load the world - it handles all paths automatically
+    final world = await LdtkWorld.load('assets/world.ldtk');
+
+    // Create level component
+    final level = LdtkLevelComponent(world);
+
+    // Load a level with collision layer
+    // Background and entity sprites are loaded automatically
+    await level.loadLevel('Level_0', intGridLayers: ['Collisions']);
+
     await add(level);
+  }
+}
+```
+
+**Switching levels dynamically:**
+```dart
+class MyGame extends FlameGame {
+  late LdtkLevelComponent level;
+
+  @override
+  Future<void> onLoad() async {
+    final world = await LdtkWorld.load('assets/world.ldtk');
+
+    level = LdtkLevelComponent(world);
+    await level.loadLevel('Level_0', intGridLayers: ['Collisions']);
+    await add(level);
+  }
+
+  Future<void> goToNextLevel() async {
+    // Change level without recreating the component
+    await level.loadLevel('Level_1', intGridLayers: ['Collisions']);
   }
 }
 ```
@@ -269,12 +301,14 @@ class PlatformerGame extends FlameGame with KeyboardEvents {
 
   @override
   Future<void> onLoad() async {
-    final level = MyLevelComponent();
-    await level.loadLevel(
-      'assets/world/simplified/Level_0',
-      intGridLayers: ['Collisions'],
-    );
+    // Load the world
+    final world = await LdtkWorld.load('assets/world.ldtk');
+
+    // Create and load level
+    final level = MyLevelComponent(world);
+    await level.loadLevel('Level_0', intGridLayers: ['Collisions']);
     await add(level);
+
     player = level.player;
   }
 
@@ -287,6 +321,8 @@ class PlatformerGame extends FlameGame with KeyboardEvents {
 
 class MyLevelComponent extends LdtkLevelComponent {
   PlayerComponent? player;
+
+  MyLevelComponent(super.world);
 
   @override
   Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
@@ -321,11 +357,20 @@ class PlayerComponent extends PositionComponent {
 
   @override
   Future<void> onLoad() async {
-    final rect = RectangleComponent(
-      size: size,
-      paint: Paint()..color = entity.color ?? Colors.blue,
-    );
-    await add(rect);
+    // Use sprite if available, otherwise use colored rectangle
+    if (entity.sprite != null) {
+      final spriteComponent = SpriteComponent(
+        sprite: entity.sprite,
+        size: size,
+      );
+      await add(spriteComponent);
+    } else {
+      final rect = RectangleComponent(
+        size: size,
+        paint: Paint()..color = entity.color ?? Colors.blue,
+      );
+      await add(rect);
+    }
   }
 
   @override
@@ -381,19 +426,47 @@ class PlayerComponent extends PositionComponent {
 
 ## API Reference
 
+### LdtkWorld
+
+Manages LDtk project configuration and level loading.
+
+```dart
+// Load a world
+final world = await LdtkWorld.load('assets/world.ldtk');
+
+// Access world properties
+bool isSimplified = world.isSimplified;         // Super Simple Export?
+bool hasExternalLevels = world.hasExternalLevels;  // External .ldtkl files?
+String assetBasePath = world.assetBasePath;        // Base path for assets
+List<LdtkJsonLevel> levels = world.levels;         // All available levels
+
+// Get paths for a level
+String? ldtklPath = world.getLdtklPath('Level_0');
+String? bgPath = world.getBackgroundPath('Level_0');
+String? levelPath = world.getSimplifiedLevelPath('Level_0');
+```
+
 ### LdtkLevelComponent
 
 Main component for loading and displaying LDtk levels.
 
 ```dart
-// Load a level
-await levelComponent.loadLevel(
-  'assets/world/simplified/Level_0',
-  intGridLayers: ['Collisions', 'Water'],  // Optional
+// Create component with world
+final level = LdtkLevelComponent(world);
+
+// Load a level by identifier
+await level.loadLevel(
+  'Level_0',
+  intGridLayers: ['Collisions', 'Water'],  // Optional: load collision layers
+  useComposite: false,                      // Optional: use individual layers (default)
+  loadBackground: true,                     // Optional: load background image (default)
 );
 
 // Access level data
-LdtkLevel? data = levelComponent.levelData;
+LdtkLevel? data = level.levelData;
+
+// Change level dynamically
+await level.loadLevel('Level_1', intGridLayers: ['Collisions']);
 
 // Override to customize entity creation
 @override
@@ -402,40 +475,21 @@ Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
 }
 ```
 
-#### Background Images
-
-Super Simple Export doesn't include background image metadata in its exported files. To use background images, you need to read the background configuration from the original `.ldtkl` file:
-
-```dart
-await levelComponent.loadLevel(
-  'assets/world/simplified/Level_0',
-  intGridLayers: ['Collisions'],
-  ldtklPath: 'assets/world/Level_0.ldtkl',    // Path to .ldtkl file for background metadata
-  assetBasePath: 'assets',                     // Base path for resolving background images
-  useComposite: false,                         // Use individual layers for transparency
-);
-```
-
 **Parameters:**
-- `ldtklPath` - Path to the `.ldtkl` file containing background image configuration
-- `assetBasePath` - Base path for resolving background image paths (useful when LDtk's `bgRelPath` is relative to a specific folder)
-- `useComposite` - Set to `false` to load individual layer images instead of the composite (allows transparency for backgrounds to show through)
+- `levelIdentifier` - Name of the level in LDtk (e.g., 'Level_0', 'Dungeon_1')
+- `intGridLayers` - List of IntGrid layer names to load for collisions
+- `useComposite` - Use composite image or individual layers (default: false for transparency)
+- `loadBackground` - Automatically load background image if defined (default: true)
+
+**Background images and entity sprites:**
+- Background images are loaded automatically from `.ldtkl` files
+- Entity sprites are loaded automatically if you assign a tile to an entity in LDtk
+- All paths are managed by `LdtkWorld`, no manual configuration needed
 
 **Supported background positioning modes:**
-- `Cover` - Background covers the entire level (default)
-- `Contain` - Background is scaled to fit within level bounds while maintaining aspect ratio
-- `Unscaled` - Background uses its original size
-
-**Note:** Advanced LDtk background options (custom scale, crop rectangles) are not currently supported.
-
-**Example in pubspec.yaml:**
-```yaml
-flutter:
-  assets:
-    - assets/world/simplified/Level_0/    # Super Simple Export files
-    - assets/world/Level_0.ldtkl          # For background metadata
-    - assets/background.png               # Your background image
-```
+- `Cover` - Background covers the entire level
+- `Contain` - Background scaled to fit while maintaining aspect ratio
+- `Unscaled` - Background uses original size
 
 ### LdtkLevel
 
@@ -460,6 +514,7 @@ Vector2 position;                          // Top-left position in pixels
 Vector2 size;                              // Size in pixels
 Map<String, dynamic> fields;              // Custom fields
 Color? color;                              // Color from LDtk
+Sprite? sprite;                            // Sprite from entity tile (if assigned in LDtk)
 ```
 
 ### LdtkIntGrid
@@ -531,16 +586,19 @@ if (water?.isSolidAtPixel(x, y) ?? false) {
 
 ### ✅ Completed
 - [x] Super Simple Export support
+- [x] World Management - `LdtkWorld` class for simplified project and level management
+- [x] Entity Tiles/Sprites - Automatic sprite loading from entity tiles defined in LDtk
+- [x] Level Switching - Change levels dynamically without recreating components
 - [x] Custom fields extraction
 - [x] LRU cache system with memory limits
 - [x] Improved error handling with detailed messages
 - [x] Individual Layer Rendering - Load and render tile layers separately (via `useComposite: false` by default)
-- [x] Background Images (partial) - Basic positioning modes (Cover, Contain, Unscaled) supported. Advanced options (custom scale, crop rectangles) not yet implemented.
+- [x] Background Images - Basic positioning modes (Cover, Contain, Unscaled) supported. Advanced options (custom scale, crop rectangles) not yet implemented.
 - [x] JSON Export support (experimental) - See [JSON_FORMAT.md](JSON_FORMAT.md)
 
 ### Planned features
 - [ ] AutoLayers Support - Render auto-generated tile layers
-- [ ] Multi-Level World System - World component with level switching and transitions
+- [ ] Level Transitions - Fade, slide, and custom transition effects between levels
 - [ ] Parallax Backgrounds - Support for parallax effects with background images
 - [ ] Advanced Background Options - Custom scale and crop rectangle support
 - [ ] Tile Animations - Animated tileset support with metadata parsing
@@ -550,7 +608,6 @@ if (water?.isSolidAtPixel(x, y) ?? false) {
 - [ ] Collision Generation from IntGrid - Automatic hitbox generation (polygons/rectangles)
 - [ ] Hot Reload Support - Watch LDtk files and reload in development
 - [ ] Debug Renderer - Visualize grids, entity bounds, collisions, and IntGrid values
-- [ ] Level Transitions - Fade, slide, and custom transition effects
 - [ ] Platformer Behavior Mixin - Reusable gravity and collision behaviors
 
 ### 🔧 Technical improvements ideas

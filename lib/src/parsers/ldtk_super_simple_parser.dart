@@ -26,9 +26,19 @@ class LdtkSuperSimpleParser {
   ///
   /// The [levelPath] should point to the level folder containing
   /// _composite.png, data.json, and other layer files.
-  Future<LdtkLevel> parseLevel(String levelPath) async {
+  ///
+  /// Optional [ldtklPath] and [assetBasePath] can be provided to load entity tiles from .ldtkl file.
+  Future<LdtkLevel> parseLevel(
+    String levelPath, {
+    String? ldtklPath,
+    String? assetBasePath,
+  }) async {
     final dataJsonPath = '$levelPath/data.json';
-    return await parseDataJson(dataJsonPath);
+    return await parseDataJson(
+      dataJsonPath,
+      ldtklPath: ldtklPath,
+      assetBasePath: assetBasePath,
+    );
   }
 
   /// Loads an image from the specified asset path.
@@ -39,8 +49,15 @@ class LdtkSuperSimpleParser {
   /// Parses entities and metadata from data.json.
   ///
   /// Throws [Exception] if the file cannot be loaded or parsed.
-  Future<LdtkLevel> parseDataJson(String path) async {
-    final cached = _levelCache.get(path);
+  ///
+  /// Optional [ldtklPath] and [assetBasePath] can be provided to load entity tiles from .ldtkl file.
+  Future<LdtkLevel> parseDataJson(
+    String path, {
+    String? ldtklPath,
+    String? assetBasePath,
+  }) async {
+    final cacheKey = ldtklPath != null ? '$path|$ldtklPath' : path;
+    final cached = _levelCache.get(cacheKey);
     if (cached != null) {
       return cached;
     }
@@ -66,6 +83,18 @@ class LdtkSuperSimpleParser {
       // Parse background color from hex string
       final bgColor = LdtkParserUtils.parseHexColor(bgColorStr);
 
+      // Load entity tile info from .ldtkl if provided
+      Map<String, Map<String, dynamic>>? entityTileInfo;
+      Map<int, ui.Image>? loadedTilesets;
+
+      if (ldtklPath != null) {
+        final result =
+            await _loadEntityTilesFromLdtkl(ldtklPath, assetBasePath);
+        entityTileInfo =
+            result['entityTileInfo'] as Map<String, Map<String, dynamic>>?;
+        loadedTilesets = result['tilesets'] as Map<int, ui.Image>?;
+      }
+
       // Parse entities
       final List<LdtkEntity> entities = [];
       final entitiesData = json['entities'] as Map<String, dynamic>? ?? {};
@@ -75,7 +104,14 @@ class LdtkSuperSimpleParser {
         final entityList = entry.value as List;
 
         for (final entityData in entityList) {
-          final entity = _parseEntity(entityData as Map<String, dynamic>);
+          final iid = entityData['iid'] as String?;
+          final tileData = entityTileInfo?[iid];
+
+          final entity = _parseEntity(
+            entityData as Map<String, dynamic>,
+            tileData: tileData,
+            loadedTilesets: loadedTilesets ?? {},
+          );
           entities.add(entity);
         }
       }
@@ -89,7 +125,7 @@ class LdtkSuperSimpleParser {
         customData: customData,
       );
 
-      _levelCache.put(path, level);
+      _levelCache.put(cacheKey, level);
       return level;
     } catch (e) {
       throw Exception('Failed to parse data.json at "$path": $e');
@@ -97,7 +133,11 @@ class LdtkSuperSimpleParser {
   }
 
   /// Helper method to parse a single entity from JSON.
-  LdtkEntity _parseEntity(Map<String, dynamic> json) {
+  LdtkEntity _parseEntity(
+    Map<String, dynamic> json, {
+    Map<String, dynamic>? tileData,
+    Map<int, ui.Image> loadedTilesets = const {},
+  }) {
     final identifier = json['id'] as String;
     final x = (json['x'] as num).toDouble();
     final y = (json['y'] as num).toDouble();
@@ -105,13 +145,125 @@ class LdtkSuperSimpleParser {
     final height = (json['height'] as num).toDouble();
     final customFields = json['customFields'] as Map<String, dynamic>? ?? {};
 
+    Sprite? sprite;
+
+    // Create sprite from tile data if available
+    if (tileData != null) {
+      final tilesetUid = tileData['tilesetUid'] as int?;
+      final tileX = tileData['x'] as int?;
+      final tileY = tileData['y'] as int?;
+      final tileW = tileData['w'] as int?;
+      final tileH = tileData['h'] as int?;
+
+      if (tilesetUid != null &&
+          tileX != null &&
+          tileY != null &&
+          tileW != null &&
+          tileH != null) {
+        final tilesetImage = loadedTilesets[tilesetUid];
+
+        if (tilesetImage != null) {
+          sprite = Sprite(
+            tilesetImage,
+            srcPosition: Vector2(tileX.toDouble(), tileY.toDouble()),
+            srcSize: Vector2(tileW.toDouble(), tileH.toDouble()),
+          );
+        }
+      }
+    }
+
     return LdtkEntity(
       identifier: identifier,
       position: Vector2(x, y),
       size: Vector2(width, height),
       fields: customFields,
       color: LdtkParserUtils.parseIntColor(json['color'] as int?),
+      sprite: sprite,
     );
+  }
+
+  /// Loads entity tile information from .ldtkl file.
+  Future<Map<String, dynamic>> _loadEntityTilesFromLdtkl(
+    String ldtklPath,
+    String? assetBasePath,
+  ) async {
+    try {
+      final ldtklString = await rootBundle.loadString(ldtklPath);
+      final ldtklJson = jsonDecode(ldtklString) as Map<String, dynamic>;
+
+      // Map to store entity IID -> tile info
+      final Map<String, Map<String, dynamic>> entityTileInfo = {};
+
+      // Load tilesets info from parent .ldtk file
+      final Map<int, String> tilesetPaths = {};
+      final basePath = assetBasePath ?? LdtkParserUtils.getBasePath(ldtklPath);
+
+      // We need to load the parent .ldtk file to get tileset definitions
+      // Convert path like 'assets/world-simplified/Level_0.ldtkl' to 'assets/world-simplified.ldtk'
+      final ldtkPath = ldtklPath.replaceAll(RegExp(r'/[^/]+\.ldtkl$'), '.ldtk');
+      try {
+        final ldtkString = await rootBundle.loadString(ldtkPath);
+        final ldtkJson = jsonDecode(ldtkString) as Map<String, dynamic>;
+        final defs = ldtkJson['defs'] as Map<String, dynamic>?;
+        final tilesets = defs?['tilesets'] as List?;
+
+        if (tilesets != null) {
+          for (final tileset in tilesets) {
+            final uid = tileset['uid'] as int?;
+            final relPath = tileset['relPath'] as String?;
+            if (uid != null && relPath != null) {
+              tilesetPaths[uid] = '$basePath/$relPath';
+            }
+          }
+        }
+      } catch (e) {
+        // Parent .ldtk file not found, continue without tilesets
+      }
+
+      // Load all required tilesets
+      final Map<int, ui.Image> loadedTilesets = {};
+
+      // Extract entity tile info from layers
+      final layerInstances = ldtklJson['layerInstances'] as List?;
+      if (layerInstances != null) {
+        for (final layer in layerInstances) {
+          if (layer['__type'] == 'Entities') {
+            final entityInstances = layer['entityInstances'] as List?;
+            if (entityInstances != null) {
+              for (final entity in entityInstances) {
+                final iid = entity['iid'] as String?;
+                final tile = entity['__tile'] as Map<String, dynamic>?;
+
+                if (iid != null && tile != null) {
+                  entityTileInfo[iid] = tile;
+
+                  // Load tileset if not already loaded
+                  final tilesetUid = tile['tilesetUid'] as int?;
+                  if (tilesetUid != null &&
+                      !loadedTilesets.containsKey(tilesetUid) &&
+                      tilesetPaths.containsKey(tilesetUid)) {
+                    loadedTilesets[tilesetUid] =
+                        await LdtkParserUtils.loadImage(
+                            tilesetPaths[tilesetUid]!);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return {
+        'entityTileInfo': entityTileInfo,
+        'tilesets': loadedTilesets,
+      };
+    } catch (e) {
+      // If loading fails, return empty maps
+      return {
+        'entityTileInfo': <String, Map<String, dynamic>>{},
+        'tilesets': <int, ui.Image>{},
+      };
+    }
   }
 
   /// Parses an IntGrid layer from CSV format.

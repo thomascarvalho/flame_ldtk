@@ -257,6 +257,7 @@ class LdtkEntityInstance {
   final int height;
   final List<dynamic> fieldInstances;
   final String? smartColor;
+  final LdtkEntityTile? tile;
 
   const LdtkEntityInstance({
     required this.identifier,
@@ -265,6 +266,7 @@ class LdtkEntityInstance {
     required this.height,
     required this.fieldInstances,
     this.smartColor,
+    this.tile,
   });
 
   factory LdtkEntityInstance.fromJson(Map<String, dynamic> json) {
@@ -275,6 +277,9 @@ class LdtkEntityInstance {
       height: json['height'] as int,
       fieldInstances: json['fieldInstances'] as List? ?? [],
       smartColor: json['__smartColor'] as String?,
+      tile: json['__tile'] != null
+          ? LdtkEntityTile.fromJson(json['__tile'] as Map<String, dynamic>)
+          : null,
     );
   }
 }
@@ -299,6 +304,33 @@ class LdtkTileInstance {
       src: (json['src'] as List).map((e) => e as int).toList(),
       f: json['f'] as int,
       t: json['t'] as int,
+    );
+  }
+}
+
+/// Entity tile information.
+class LdtkEntityTile {
+  final int tilesetUid;
+  final int x;
+  final int y;
+  final int w;
+  final int h;
+
+  const LdtkEntityTile({
+    required this.tilesetUid,
+    required this.x,
+    required this.y,
+    required this.w,
+    required this.h,
+  });
+
+  factory LdtkEntityTile.fromJson(Map<String, dynamic> json) {
+    return LdtkEntityTile(
+      tilesetUid: json['tilesetUid'] as int,
+      x: json['x'] as int,
+      y: json['y'] as int,
+      w: json['w'] as int,
+      h: json['h'] as int,
     );
   }
 }

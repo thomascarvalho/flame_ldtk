@@ -1,9 +1,11 @@
 import 'package:flame_ldtk/flame_ldtk.dart';
 import 'player.dart';
 
-/// Custom level component for Super Simple Export format that handles entity instantiation.
+/// Custom level component that handles entity instantiation.
 class SimplifiedLevel extends LdtkLevelComponent {
   Player? player;
+
+  SimplifiedLevel(super.world);
 
   @override
   Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {

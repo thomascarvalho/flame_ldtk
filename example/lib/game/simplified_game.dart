@@ -1,5 +1,6 @@
 import 'package:flame/game.dart';
 import 'package:flame/input.dart';
+import 'package:flame_ldtk/flame_ldtk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../components/simplified_level.dart';
@@ -13,12 +14,12 @@ class SimplifiedGame extends FlameGame with KeyboardEvents {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Load the level with collision layer
-    final level = SimplifiedLevel();
-    await level.loadLevel('assets/world-simplified/simplified/Level_0',
-        intGridLayers: ['Collisions'],
-        ldtklPath: 'assets/world-simplified/Level_0.ldtkl',
-        assetBasePath: 'assets');
+    // Load the world
+    final world = await LdtkWorld.load('assets/world-simplified.ldtk');
+
+    // Load the level
+    final level = SimplifiedLevel(world);
+    await level.loadLevel('Level_0', intGridLayers: ['Collisions']);
 
     await add(level);
 

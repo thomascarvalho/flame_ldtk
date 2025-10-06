@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 import '../models/ldtk_level.dart';
@@ -78,7 +79,8 @@ class LdtkJsonParser {
       levelWithLayers = await _loadExternalLevel(levelPath);
     }
 
-    final parsedLevel = _parseLevel(levelWithLayers, project.defs);
+    final parsedLevel =
+        await _parseLevel(levelWithLayers, project.defs, projectPath);
     _parsedLevelCache.put(cacheKey, parsedLevel);
     return parsedLevel;
   }
@@ -105,7 +107,11 @@ class LdtkJsonParser {
   }
 
   /// Converts a LdtkJsonLevel to a LdtkLevel.
-  LdtkLevel _parseLevel(LdtkJsonLevel jsonLevel, LdtkDefinitions defs) {
+  Future<LdtkLevel> _parseLevel(
+    LdtkJsonLevel jsonLevel,
+    LdtkDefinitions defs,
+    String projectPath,
+  ) async {
     // Parse background color
     final bgColor = LdtkParserUtils.parseHexColor(jsonLevel.bgColor);
 
@@ -113,11 +119,41 @@ class LdtkJsonParser {
     final List<LdtkEntity> entities = [];
     final Map<String, LdtkIntGrid> intGrids = {};
 
+    // Pre-load tilesets used by entities
+    final Map<int, ui.Image> loadedTilesets = {};
+    final basePath = LdtkParserUtils.getBasePath(projectPath);
+
     if (jsonLevel.layerInstances != null) {
+      // First pass: collect all tileset UIDs used by entities
       for (final layer in jsonLevel.layerInstances!) {
         if (layer.type == 'Entities') {
           for (final entityInstance in layer.entityInstances) {
-            entities.add(_parseEntity(entityInstance));
+            if (entityInstance.tile != null) {
+              final tilesetUid = entityInstance.tile!.tilesetUid;
+              if (!loadedTilesets.containsKey(tilesetUid)) {
+                // Find and load the tileset
+                final tilesetDef = defs.tilesets.firstWhere(
+                  (ts) => ts.uid == tilesetUid,
+                  orElse: () => throw Exception(
+                    'Tileset with uid $tilesetUid not found for entity ${entityInstance.identifier}',
+                  ),
+                );
+                if (tilesetDef.relPath != null) {
+                  final tilesetPath = '$basePath/${tilesetDef.relPath}';
+                  loadedTilesets[tilesetUid] =
+                      await LdtkParserUtils.loadImage(tilesetPath);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Second pass: parse entities with loaded tilesets
+      for (final layer in jsonLevel.layerInstances!) {
+        if (layer.type == 'Entities') {
+          for (final entityInstance in layer.entityInstances) {
+            entities.add(_parseEntity(entityInstance, loadedTilesets));
           }
         } else if (layer.type == 'IntGrid') {
           intGrids[layer.identifier] = _parseIntGrid(layer);
@@ -137,7 +173,26 @@ class LdtkJsonParser {
   }
 
   /// Converts a LdtkEntityInstance to a LdtkEntity.
-  LdtkEntity _parseEntity(LdtkEntityInstance entityInstance) {
+  LdtkEntity _parseEntity(
+    LdtkEntityInstance entityInstance,
+    Map<int, ui.Image> loadedTilesets,
+  ) {
+    Sprite? sprite;
+
+    // Create sprite from entity tile if available
+    if (entityInstance.tile != null) {
+      final tile = entityInstance.tile!;
+      final tilesetImage = loadedTilesets[tile.tilesetUid];
+
+      if (tilesetImage != null) {
+        sprite = Sprite(
+          tilesetImage,
+          srcPosition: Vector2(tile.x.toDouble(), tile.y.toDouble()),
+          srcSize: Vector2(tile.w.toDouble(), tile.h.toDouble()),
+        );
+      }
+    }
+
     return LdtkEntity(
       identifier: entityInstance.identifier,
       position: Vector2(
@@ -151,6 +206,7 @@ class LdtkJsonParser {
       fields:
           LdtkParserUtils.parseFieldInstances(entityInstance.fieldInstances),
       color: LdtkParserUtils.parseHexColor(entityInstance.smartColor),
+      sprite: sprite,
     );
   }
 

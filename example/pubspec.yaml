@@ -23,4 +23,6 @@ flutter:
   assets:
     - assets/world-simplified/simplified/Level_0/
     - assets/world-simplified/
+    - assets/world-simplified.ldtk
+    - assets/tilemap_packed.png
     - assets/colored_forest.png

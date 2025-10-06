@@ -3,24 +3,42 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flame/components.dart';
 import 'package:flame_ldtk/src/components/ldtk_level_component.dart';
 import 'package:flame_ldtk/src/models/ldtk_entity.dart';
+import 'package:flame_ldtk/src/models/ldtk_world.dart';
+import 'package:flame_ldtk/src/models/ldtk_json_models.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // Create a mock world for testing
+  LdtkWorld createMockWorld() {
+    return const LdtkWorld.forTesting(
+      projectPath: 'test/path.ldtk',
+      isSimplified: true,
+      hasExternalLevels: true,
+      assetBasePath: 'test',
+      simplifiedPath: 'test/simplified',
+      levels: [],
+      defs: LdtkDefinitions(layers: [], entities: [], tilesets: []),
+    );
+  }
+
   group('LdtkLevelComponent', () {
     test('component starts with null levelData', () {
-      final component = LdtkLevelComponent();
+      final world = createMockWorld();
+      final component = LdtkLevelComponent(world);
       expect(component.levelData, isNull);
     });
 
     test('can be instantiated', () {
-      final component = LdtkLevelComponent();
+      final world = createMockWorld();
+      final component = LdtkLevelComponent(world);
       expect(component, isA<LdtkLevelComponent>());
       expect(component, isA<PositionComponent>());
     });
 
     testWithFlameGame('can be added to game', (game) async {
-      final component = LdtkLevelComponent();
+      final world = createMockWorld();
+      final component = LdtkLevelComponent(world);
       await game.ensureAdd(component);
 
       expect(game.children.contains(component), isTrue);
@@ -29,7 +47,9 @@ void main() {
 
     test('onEntitiesLoaded is called with entities', () async {
       var entitiesLoaded = false;
+      final world = createMockWorld();
       final testComponent = _TestLevelComponent(
+        world,
         onEntitiesCallback: (entities) {
           entitiesLoaded = true;
         },
@@ -51,7 +71,9 @@ void main() {
 
     test('custom entity creation works', () async {
       final entities = <LdtkEntity>[];
+      final world = createMockWorld();
       final testComponent = _TestLevelComponent(
+        world,
         onEntitiesCallback: (loadedEntities) {
           entities.addAll(loadedEntities);
         },
@@ -78,7 +100,9 @@ void main() {
     });
 
     test('can be extended with custom entity handling', () {
+      final world = createMockWorld();
       final customComponent = _TestLevelComponent(
+        world,
         onEntitiesCallback: (entities) {},
       );
 
@@ -93,7 +117,7 @@ void main() {
 class _TestLevelComponent extends LdtkLevelComponent {
   final void Function(List<LdtkEntity> entities) onEntitiesCallback;
 
-  _TestLevelComponent({required this.onEntitiesCallback});
+  _TestLevelComponent(super.world, {required this.onEntitiesCallback});
 
   @override
   Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {

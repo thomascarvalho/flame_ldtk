@@ -95,12 +95,13 @@ void main() {
     });
 
     testWithFlameGame('LdtkLevelComponent loads level correctly', (game) async {
-      final levelComponent = LdtkLevelComponent();
+      final world = await LdtkWorld.load('assets/world-simplified.ldtk');
+      final levelComponent = LdtkLevelComponent(world);
 
       await game.ensureAdd(levelComponent);
 
       await levelComponent.loadLevel(
-        'assets/world-simplified/simplified/Level_0',
+        'Level_0',
         intGridLayers: ['Collisions'],
         cellSize: 18,
       );
@@ -112,15 +113,14 @@ void main() {
     });
 
     testWithFlameGame('LdtkLevelComponent with background image', (game) async {
-      final levelComponent = LdtkLevelComponent();
+      final world = await LdtkWorld.load('assets/world-simplified.ldtk');
+      final levelComponent = LdtkLevelComponent(world);
 
       await game.ensureAdd(levelComponent);
 
       await levelComponent.loadLevel(
-        'assets/world-simplified/simplified/Level_0',
+        'Level_0',
         intGridLayers: ['Collisions'],
-        ldtklPath: 'assets/world-simplified/Level_0.ldtkl',
-        assetBasePath: 'assets',
         useComposite: false,
       );
 
