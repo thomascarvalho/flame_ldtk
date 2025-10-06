@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
 import 'game/simplified_game.dart';
-import 'game/json_game.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,8 +14,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  bool useJsonFormat = false;
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -28,17 +25,7 @@ class _MyAppState extends State<MyApp> {
       ),
       home: Scaffold(
         body: GameWidget(
-          key: ValueKey(useJsonFormat),
-          game: useJsonFormat ? JsonGame() : SimplifiedGame(),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            setState(() {
-              useJsonFormat = !useJsonFormat;
-            });
-          },
-          label: Text(useJsonFormat ? 'JSON Format' : 'Simplified Format'),
-          icon: const Icon(Icons.swap_horiz),
+          game: SimplifiedGame(),
         ),
       ),
     );
