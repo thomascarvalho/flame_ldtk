@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/thomascarvalho/flame_ldtk/compare/v0.2.1...v0.2.2) (2025-10-06)
+
+
+### Features
+
+* add individual layer rendering and simple background support ([98b3063](https://github.com/thomascarvalho/flame_ldtk/commit/98b30630ba87a2ec0a129c07f18a34a82c228f4a))
+
 ## [0.2.1](https://github.com/thomascarvalho/flame_ldtk/compare/v0.2.0...v0.2.1) (2025-10-05)
 
 
