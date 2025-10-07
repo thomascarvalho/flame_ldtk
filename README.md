@@ -23,13 +23,7 @@ A Flutter package for integrating [LDtk](https://ldtk.io/) levels into [Flame En
 
 ## Installation
 
-Add `flame_ldtk` to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  flame: ^1.32.0
-  flame_ldtk: ^0.2.0
-```
+`flutter pub add flame_ldtk`
 
 ## LDtk Setup
 
@@ -73,6 +67,8 @@ import 'package:flame_ldtk/flame_ldtk.dart';
 class MyGame extends FlameGame {
   @override
   Future<void> onLoad() async {
+    await super.onLoad();
+
     // Load the world once
     final world = await LdtkWorld.load('assets/world.ldtk');
 
@@ -80,6 +76,12 @@ class MyGame extends FlameGame {
     final level = LdtkLevelComponent(world);
     await level.loadLevel('Level_0');
     await add(level);
+
+    // Optional: Center camera on the level
+    camera.viewfinder.position = Vector2(
+      level.levelData!.width / 2,
+      level.levelData!.height / 2,
+    );
   }
 }
 ```
@@ -92,14 +94,14 @@ import 'package:flame_ldtk/flame_ldtk.dart';
 class MyGame extends FlameGame {
   @override
   Future<void> onLoad() async {
+    await super.onLoad();
+
     // Load the world - it handles all paths automatically
     final world = await LdtkWorld.load('assets/world.ldtk');
 
-    // Create level component
-    final level = LdtkLevelComponent(world);
-
-    // Load a level with collision layer
+    // Create and load a level with collision layer
     // Background and entity sprites are loaded automatically
+    final level = LdtkLevelComponent(world);
     await level.loadLevel('Level_0', intGridLayers: ['Collisions']);
 
     await add(level);
@@ -114,6 +116,8 @@ class MyGame extends FlameGame {
 
   @override
   Future<void> onLoad() async {
+    await super.onLoad();
+
     final world = await LdtkWorld.load('assets/world.ldtk');
 
     level = LdtkLevelComponent(world);
@@ -136,22 +140,26 @@ Override `onEntitiesLoaded()` to handle your entities:
 
 ```dart
 class MyLevelComponent extends LdtkLevelComponent {
+  Player? player;
+
+  MyLevelComponent(super.world);
+
   @override
   Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
     for (final entity in entities) {
       switch (entity.identifier) {
         case 'Player':
-          final player = PlayerComponent(entity, levelData!);
-          await add(player);
+          player = Player(entity, levelData!);
+          await add(player!);
           break;
 
         case 'Enemy':
-          final enemy = EnemyComponent(entity, levelData!);
+          final enemy = Enemy(entity, levelData!);
           await add(enemy);
           break;
 
         case 'Coin':
-          final coin = CoinComponent(entity);
+          final coin = Coin(entity);
           await add(coin);
           break;
       }
@@ -163,24 +171,21 @@ class MyLevelComponent extends LdtkLevelComponent {
 ### Create entity components
 
 ```dart
-class PlayerComponent extends PositionComponent {
+class Player extends PositionComponent {
   final LdtkEntity entity;
   final LdtkLevel level;
 
-  PlayerComponent(this.entity, this.level) {
-    position = entity.position;  // LDtk position
-    size = entity.size;           // Entity size from LDtk
+  Player(this.entity, this.level) {
+    position = entity.position;  // Position from LDtk
+    size = entity.size;           // Size from LDtk
   }
 
   @override
   Future<void> onLoad() async {
-    // Render with entity color from LDtk
-    final color = entity.color ?? Colors.blue;
-    final rect = RectangleComponent(
-      size: size,
-      paint: Paint()..color = color,
-    );
-    await add(rect);
+    // entity.sprite - Sprite from LDtk tile (if assigned)
+    // entity.color - Color from LDtk
+    // Add your rendering logic here
+    ...
   }
 }
 ```
@@ -188,10 +193,8 @@ class PlayerComponent extends PositionComponent {
 ### Access custom fields
 
 ```dart
-class ChestComponent extends PositionComponent {
-  final LdtkEntity entity;
-
-  ChestComponent(this.entity) {
+class Chest extends PositionComponent {
+  Chest(LdtkEntity entity) {
     position = entity.position;
     size = entity.size;
 
@@ -199,7 +202,8 @@ class ChestComponent extends PositionComponent {
     final loot = entity.fields['loot'] as String? ?? 'gold';
     final amount = entity.fields['amount'] as int? ?? 10;
 
-    print('Chest contains $amount $loot');
+    // Use the custom fields in your game logic
+    ...
   }
 }
 ```
@@ -209,60 +213,30 @@ class ChestComponent extends PositionComponent {
 ### Load IntGrid layers
 
 ```dart
-class MyLevelComponent extends LdtkLevelComponent {
-  @override
-  Future<void> onLoad() async {
-    // Load level with collision layer
-    await loadLevel(
-      'assets/world/simplified/Level_0',
-      intGridLayers: ['Collisions'],  // Load IntGrid layers
-    );
-  }
-}
+// When loading a level, specify which IntGrid layers to load
+await level.loadLevel(
+  'Level_0',
+  intGridLayers: ['Collisions', 'Water', 'Hazards'],  // Load IntGrid layers
+);
 ```
 
 ### Implement collision detection
 
 ```dart
-class PlayerComponent extends PositionComponent {
+class Player extends PositionComponent {
   final LdtkLevel level;
-  Vector2 velocity = Vector2.zero();
 
   @override
   void update(double dt) {
+    // Access IntGrid layers loaded from LDtk
     final collisions = level.intGrids['Collisions'];
     if (collisions == null) return;
 
-    // Calculate new position
-    final newX = position.x + velocity.x * dt;
-    final newY = position.y + velocity.y * dt;
+    // Use IntGrid methods to check collisions
+    final canMove = !collisions.isSolidAtPixel(newX, newY);
 
-    // Check horizontal collision
-    if (_canMoveTo(collisions, newX, position.y)) {
-      position.x = newX;
-    }
-
-    // Check vertical collision
-    if (_canMoveTo(collisions, position.x, newY)) {
-      position.y = newY;
-    }
-  }
-
-  bool _canMoveTo(LdtkIntGrid grid, double x, double y) {
-    // Check four corners of player hitbox
-    final corners = [
-      Vector2(x, y),                      // Top-left
-      Vector2(x + size.x, y),             // Top-right
-      Vector2(x, y + size.y),             // Bottom-left
-      Vector2(x + size.x, y + size.y),    // Bottom-right
-    ];
-
-    for (final corner in corners) {
-      if (grid.isSolidAtPixel(corner.x, corner.y)) {
-        return false; // Collision detected
-      }
-    }
-    return true; // Can move
+    // Your game physics logic here
+    ...
   }
 }
 ```
@@ -291,135 +265,87 @@ int height = grid.height;          // Grid height in cells
 
 ```dart
 import 'package:flame/game.dart';
-import 'package:flame/components.dart';
-import 'package:flame/input.dart';
-import 'package:flutter/services.dart';
 import 'package:flame_ldtk/flame_ldtk.dart';
 
-class PlatformerGame extends FlameGame with KeyboardEvents {
-  PlayerComponent? player;
-
+// 1. Load the world and level
+class MyGame extends FlameGame {
   @override
   Future<void> onLoad() async {
-    // Load the world
+    await super.onLoad();
+
+    // Load the LDtk world
     final world = await LdtkWorld.load('assets/world.ldtk');
 
-    // Create and load level
+    // Create custom level component
     final level = MyLevelComponent(world);
     await level.loadLevel('Level_0', intGridLayers: ['Collisions']);
+
     await add(level);
 
-    player = level.player;
-  }
-
-  @override
-  KeyEventResult onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keys) {
-    player?.onKeyEvent(event, keys);
-    return KeyEventResult.handled;
+    // Center camera on the level
+    camera.viewfinder.position = Vector2(
+      level.levelData!.width / 2,
+      level.levelData!.height / 2,
+    );
   }
 }
 
+// 2. Override onEntitiesLoaded to handle entities from LDtk
 class MyLevelComponent extends LdtkLevelComponent {
-  PlayerComponent? player;
+  Player? player;
 
   MyLevelComponent(super.world);
 
   @override
   Future<void> onEntitiesLoaded(List<LdtkEntity> entities) async {
     for (final entity in entities) {
-      if (entity.identifier == 'Player') {
-        player = PlayerComponent(entity, levelData!);
-        await add(player!);
+      switch (entity.identifier) {
+        case 'Player':
+          player = Player(entity, levelData!);
+          await add(player!);
+          break;
+        case 'Enemy':
+          await add(Enemy(entity, levelData!));
+          break;
       }
     }
   }
 }
 
-class PlayerComponent extends PositionComponent {
+// 3. Use entity data and IntGrid for collision detection
+class Player extends PositionComponent {
   final LdtkEntity entity;
   final LdtkLevel level;
 
-  // Physics
-  static const double moveSpeed = 100.0;
-  static const double jumpForce = -300.0;
-  static const double gravity = 800.0;
-
-  Vector2 velocity = Vector2.zero();
-  bool isOnGround = false;
-  bool isMovingLeft = false;
-  bool isMovingRight = false;
-  bool wantsToJump = false;
-
-  PlayerComponent(this.entity, this.level) {
+  Player(this.entity, this.level) {
+    // Get position and size from LDtk entity
     position = entity.position;
     size = entity.size;
   }
 
   @override
   Future<void> onLoad() async {
-    // Use sprite if available, otherwise use colored rectangle
+    // Use sprite from LDtk if available
     if (entity.sprite != null) {
-      final spriteComponent = SpriteComponent(
-        sprite: entity.sprite,
-        size: size,
-      );
-      await add(spriteComponent);
-    } else {
-      final rect = RectangleComponent(
-        size: size,
-        paint: Paint()..color = entity.color ?? Colors.blue,
-      );
-      await add(rect);
+      await add(SpriteComponent(sprite: entity.sprite, size: size));
     }
+    // Your rendering logic here
+    ...
   }
 
   @override
   void update(double dt) {
-    super.update(dt);
-
+    // Access IntGrid for collision detection
     final collisions = level.intGrids['Collisions'];
     if (collisions == null) return;
 
-    // Horizontal movement
-    velocity.x = (isMovingRight ? moveSpeed : 0) +
-                 (isMovingLeft ? -moveSpeed : 0);
-
-    // Jump
-    if (wantsToJump && isOnGround) {
-      velocity.y = jumpForce;
-      isOnGround = false;
-    }
-
-    // Gravity
-    velocity.y += gravity * dt;
-
-    // Apply movement with collision detection
-    final newX = position.x + velocity.x * dt;
-    if (_canMoveTo(collisions, newX, position.y)) {
+    // Check collisions using IntGrid methods
+    if (!collisions.isSolidAtPixel(newX, newY)) {
       position.x = newX;
     }
 
-    final newY = position.y + velocity.y * dt;
-    if (_canMoveTo(collisions, position.x, newY)) {
-      position.y = newY;
-      isOnGround = false;
-    } else {
-      if (velocity.y > 0) isOnGround = true;
-      velocity.y = 0;
-    }
-  }
-
-  bool _canMoveTo(LdtkIntGrid grid, double x, double y) {
-    return !grid.isSolidAtPixel(x, y) &&
-           !grid.isSolidAtPixel(x + size.x, y) &&
-           !grid.isSolidAtPixel(x, y + size.y) &&
-           !grid.isSolidAtPixel(x + size.x, y + size.y);
-  }
-
-  void onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keys) {
-    isMovingLeft = keys.contains(LogicalKeyboardKey.arrowLeft);
-    isMovingRight = keys.contains(LogicalKeyboardKey.arrowRight);
-    wantsToJump = keys.contains(LogicalKeyboardKey.space);
+    // Your game physics here
+    ...
   }
 }
 ```
@@ -534,9 +460,9 @@ int getValue(int x, int y);               // Get cell value (0 = empty)
 ### 1. Use separate components for different entity types
 
 ```dart
-class PlayerComponent extends LdtkEntityComponent { ... }
-class EnemyComponent extends LdtkEntityComponent { ... }
-class ItemComponent extends LdtkEntityComponent { ... }
+class Player extends PositionComponent { ... }
+class Enemy extends PositionComponent { ... }
+class Item extends PositionComponent { ... }
 ```
 
 ### 2. Store level reference for collision access
