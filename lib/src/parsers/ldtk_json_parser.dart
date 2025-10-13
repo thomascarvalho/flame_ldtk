@@ -207,6 +207,10 @@ class LdtkJsonParser {
           LdtkParserUtils.parseFieldInstances(entityInstance.fieldInstances),
       color: LdtkParserUtils.parseHexColor(entityInstance.smartColor),
       sprite: sprite,
+      anchor: Anchor(
+        entityInstance.pivot[0],
+        entityInstance.pivot[1],
+      ),
     );
   }
 

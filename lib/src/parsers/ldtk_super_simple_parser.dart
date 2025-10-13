@@ -83,15 +83,17 @@ class LdtkSuperSimpleParser {
       // Parse background color from hex string
       final bgColor = LdtkParserUtils.parseHexColor(bgColorStr);
 
-      // Load entity tile info from .ldtkl if provided
+      // Load entity tile info and pivot info from .ldtkl if provided
       Map<String, Map<String, dynamic>>? entityTileInfo;
+      Map<String, List<double>>? entityPivotInfo;
       Map<int, ui.Image>? loadedTilesets;
 
       if (ldtklPath != null) {
-        final result =
-            await _loadEntityTilesFromLdtkl(ldtklPath, assetBasePath);
+        final result = await _loadEntityDataFromLdtkl(ldtklPath, assetBasePath);
         entityTileInfo =
             result['entityTileInfo'] as Map<String, Map<String, dynamic>>?;
+        entityPivotInfo =
+            result['entityPivotInfo'] as Map<String, List<double>>?;
         loadedTilesets = result['tilesets'] as Map<int, ui.Image>?;
       }
 
@@ -106,10 +108,12 @@ class LdtkSuperSimpleParser {
         for (final entityData in entityList) {
           final iid = entityData['iid'] as String?;
           final tileData = entityTileInfo?[iid];
+          final pivotData = entityPivotInfo?[iid];
 
           final entity = _parseEntity(
             entityData as Map<String, dynamic>,
             tileData: tileData,
+            pivotData: pivotData,
             loadedTilesets: loadedTilesets ?? {},
           );
           entities.add(entity);
@@ -136,6 +140,7 @@ class LdtkSuperSimpleParser {
   LdtkEntity _parseEntity(
     Map<String, dynamic> json, {
     Map<String, dynamic>? tileData,
+    List<double>? pivotData,
     Map<int, ui.Image> loadedTilesets = const {},
   }) {
     final identifier = json['id'] as String;
@@ -172,6 +177,20 @@ class LdtkSuperSimpleParser {
       }
     }
 
+    // Try to get pivot from JSON first (hybrid mode), then from ldtkl data
+    final Anchor anchor;
+    if (json['pivot'] != null) {
+      final pivot = json['pivot'] as List;
+      anchor = Anchor(
+        (pivot[0] as num).toDouble(),
+        (pivot[1] as num).toDouble(),
+      );
+    } else if (pivotData != null) {
+      anchor = Anchor(pivotData[0], pivotData[1]);
+    } else {
+      anchor = Anchor.topLeft;
+    }
+
     return LdtkEntity(
       identifier: identifier,
       position: Vector2(x, y),
@@ -179,11 +198,12 @@ class LdtkSuperSimpleParser {
       fields: customFields,
       color: LdtkParserUtils.parseIntColor(json['color'] as int?),
       sprite: sprite,
+      anchor: anchor,
     );
   }
 
-  /// Loads entity tile information from .ldtkl file.
-  Future<Map<String, dynamic>> _loadEntityTilesFromLdtkl(
+  /// Loads entity data (tiles and pivots) from .ldtkl file.
+  Future<Map<String, dynamic>> _loadEntityDataFromLdtkl(
     String ldtklPath,
     String? assetBasePath,
   ) async {
@@ -191,8 +211,9 @@ class LdtkSuperSimpleParser {
       final ldtklString = await rootBundle.loadString(ldtklPath);
       final ldtklJson = jsonDecode(ldtklString) as Map<String, dynamic>;
 
-      // Map to store entity IID -> tile info
+      // Maps to store entity IID -> tile/pivot info
       final Map<String, Map<String, dynamic>> entityTileInfo = {};
+      final Map<String, List<double>> entityPivotInfo = {};
 
       // Load tilesets info from parent .ldtk file
       final Map<int, String> tilesetPaths = {};
@@ -223,7 +244,7 @@ class LdtkSuperSimpleParser {
       // Load all required tilesets
       final Map<int, ui.Image> loadedTilesets = {};
 
-      // Extract entity tile info from layers
+      // Extract entity tile and pivot info from layers
       final layerInstances = ldtklJson['layerInstances'] as List?;
       if (layerInstances != null) {
         for (final layer in layerInstances) {
@@ -232,9 +253,11 @@ class LdtkSuperSimpleParser {
             if (entityInstances != null) {
               for (final entity in entityInstances) {
                 final iid = entity['iid'] as String?;
-                final tile = entity['__tile'] as Map<String, dynamic>?;
+                if (iid == null) continue;
 
-                if (iid != null && tile != null) {
+                // Extract tile info
+                final tile = entity['__tile'] as Map<String, dynamic>?;
+                if (tile != null) {
                   entityTileInfo[iid] = tile;
 
                   // Load tileset if not already loaded
@@ -247,6 +270,15 @@ class LdtkSuperSimpleParser {
                             tilesetPaths[tilesetUid]!);
                   }
                 }
+
+                // Extract pivot info
+                final pivot = entity['__pivot'] as List?;
+                if (pivot != null && pivot.length == 2) {
+                  entityPivotInfo[iid] = [
+                    (pivot[0] as num).toDouble(),
+                    (pivot[1] as num).toDouble(),
+                  ];
+                }
               }
             }
           }
@@ -255,12 +287,14 @@ class LdtkSuperSimpleParser {
 
       return {
         'entityTileInfo': entityTileInfo,
+        'entityPivotInfo': entityPivotInfo,
         'tilesets': loadedTilesets,
       };
     } catch (e) {
       // If loading fails, return empty maps
       return {
         'entityTileInfo': <String, Map<String, dynamic>>{},
+        'entityPivotInfo': <String, List<double>>{},
         'tilesets': <int, ui.Image>{},
       };
     }

@@ -297,6 +297,7 @@ class LdtkEntityInstance {
   final List<dynamic> fieldInstances;
   final String? smartColor;
   final LdtkEntityTile? tile;
+  final List<double> pivot;
 
   const LdtkEntityInstance({
     required this.identifier,
@@ -306,6 +307,7 @@ class LdtkEntityInstance {
     required this.fieldInstances,
     this.smartColor,
     this.tile,
+    this.pivot = const [0, 0],
   });
 
   factory LdtkEntityInstance.fromJson(Map<String, dynamic> json) {
@@ -319,6 +321,9 @@ class LdtkEntityInstance {
       tile: json['__tile'] != null
           ? LdtkEntityTile.fromJson(json['__tile'] as Map<String, dynamic>)
           : null,
+      pivot: json['__pivot'] != null
+          ? (json['__pivot'] as List).map((e) => (e as num).toDouble()).toList()
+          : [0, 0],
     );
   }
 }

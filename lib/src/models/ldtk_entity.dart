@@ -23,6 +23,10 @@ class LdtkEntity {
   /// This sprite can be used to render the entity's visual representation.
   final Sprite? sprite;
 
+  /// Anchor point for the entity, derived from LDtk's pivot point.
+  /// Anchor.topLeft (0, 0) = top-left, Anchor.center (0.5, 0.5) = center, etc.
+  final Anchor anchor;
+
   const LdtkEntity({
     required this.identifier,
     required this.position,
@@ -30,5 +34,6 @@ class LdtkEntity {
     this.fields = const {},
     this.color,
     this.sprite,
+    this.anchor = Anchor.topLeft,
   });
 }
