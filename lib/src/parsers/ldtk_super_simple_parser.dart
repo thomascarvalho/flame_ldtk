@@ -380,4 +380,168 @@ class LdtkSuperSimpleParser {
       customData: level.customData,
     );
   }
+
+  /// Loads an IntGrid based on tileset enum tags from a .ldtkl file.
+  ///
+  /// This creates a virtual IntGrid where cells are marked as 1 if the tile
+  /// at that position has the specified [enumTagName].
+  ///
+  /// Example: `loadTileEnumGrid('assets/maps/level.ldtkl', 'Deadly', 'Tiles')`
+  /// will create an IntGrid marking all tiles with the "Deadly" tag.
+  Future<LdtkIntGrid?> loadTileEnumGrid(
+    String ldtklPath,
+    String enumTagName,
+    String tileLayerName, {
+    String? assetBasePath,
+  }) async {
+    try {
+      final ldtklString = await rootBundle.loadString(ldtklPath);
+      final ldtklJson = jsonDecode(ldtklString) as Map<String, dynamic>;
+
+      // Load tileset definitions from parent .ldtk file
+      final ldtkPath = ldtklPath.replaceAll(RegExp(r'/[^/]+\.ldtkl$'), '.ldtk');
+      Map<int, List<int>> tilesetEnumTags = {};
+
+      try {
+        final ldtkString = await rootBundle.loadString(ldtkPath);
+        final ldtkJson = jsonDecode(ldtkString) as Map<String, dynamic>;
+        final defs = ldtkJson['defs'] as Map<String, dynamic>?;
+        final tilesets = defs?['tilesets'] as List?;
+
+        if (tilesets != null) {
+          for (final tileset in tilesets) {
+            final uid = tileset['uid'] as int?;
+            final enumTags = tileset['enumTags'] as List?;
+
+            if (uid != null && enumTags != null) {
+              for (final tag in enumTags) {
+                final tagName = tag['enumValueId'] as String?;
+                final tileIds = tag['tileIds'] as List?;
+
+                if (tagName == enumTagName && tileIds != null) {
+                  tilesetEnumTags[uid] = tileIds.map((e) => e as int).toList();
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Parent .ldtk file not found
+        return null;
+      }
+
+      // Find the tile layer in the level
+      final layerInstances = ldtklJson['layerInstances'] as List?;
+      if (layerInstances == null) return null;
+
+      for (final layer in layerInstances) {
+        if (layer['__identifier'] == tileLayerName) {
+          final gridTiles = layer['gridTiles'] as List?;
+          final cWid = layer['__cWid'] as int?;
+          final cHei = layer['__cHei'] as int?;
+          final gridSize = layer['__gridSize'] as int?;
+          final tilesetDefUid = layer['__tilesetDefUid'] as int?;
+
+          if (gridTiles == null ||
+              cWid == null ||
+              cHei == null ||
+              gridSize == null ||
+              tilesetDefUid == null) {
+            return null;
+          }
+
+          // Get the list of tile IDs with this enum tag
+          final taggedTileIds = tilesetEnumTags[tilesetDefUid] ?? [];
+          if (taggedTileIds.isEmpty) {
+            // No tiles with this tag, return empty grid
+            return LdtkIntGrid(
+              layerName: '${tileLayerName}_$enumTagName',
+              grid: List.generate(cHei, (_) => List.filled(cWid, 0)),
+              cellSize: gridSize,
+            );
+          }
+
+          // Create a grid marking tiles with the enum tag
+          final grid = List.generate(cHei, (_) => List.filled(cWid, 0));
+
+          for (final tile in gridTiles) {
+            final tileId = tile['t'] as int?;
+            final px = tile['px'] as List?;
+
+            if (tileId != null &&
+                px != null &&
+                px.length >= 2 &&
+                taggedTileIds.contains(tileId)) {
+              final x = (px[0] as int) ~/ gridSize;
+              final y = (px[1] as int) ~/ gridSize;
+
+              if (x >= 0 && x < cWid && y >= 0 && y < cHei) {
+                grid[y][x] = 1;
+              }
+            }
+          }
+
+          return LdtkIntGrid(
+            layerName: '${tileLayerName}_$enumTagName',
+            grid: grid,
+            cellSize: gridSize,
+          );
+        }
+      }
+
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Loads tile enum grids and returns an updated LdtkLevel with the loaded grids.
+  ///
+  /// [enumGrids] is a map of grid name -> (tileLayerName, enumTagName).
+  ///
+  /// Example:
+  /// ```dart
+  /// final level = await parser.loadTileEnumGrids(
+  ///   'assets/maps/level0.ldtkl',
+  ///   level,
+  ///   {
+  ///     'Deadly': ('Tiles', 'Deadly'),
+  ///     'Slippery': ('Tiles', 'Slippery'),
+  ///   },
+  /// );
+  /// ```
+  Future<LdtkLevel> loadTileEnumGrids(
+    String ldtklPath,
+    LdtkLevel level,
+    Map<String, (String, String)> enumGrids, {
+    String? assetBasePath,
+  }) async {
+    final Map<String, LdtkIntGrid> intGrids = {...level.intGrids};
+
+    for (final entry in enumGrids.entries) {
+      final gridName = entry.key;
+      final (tileLayerName, enumTagName) = entry.value;
+
+      final enumGrid = await loadTileEnumGrid(
+        ldtklPath,
+        enumTagName,
+        tileLayerName,
+        assetBasePath: assetBasePath,
+      );
+
+      if (enumGrid != null) {
+        intGrids[gridName] = enumGrid;
+      }
+    }
+
+    return LdtkLevel(
+      name: level.name,
+      width: level.width,
+      height: level.height,
+      bgColor: level.bgColor,
+      entities: level.entities,
+      intGrids: intGrids,
+      customData: level.customData,
+    );
+  }
 }

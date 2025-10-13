@@ -132,22 +132,29 @@ class LdtkWorld {
   /// - [intGridLayers]: List of IntGrid layer names to load (e.g., ['Collisions']).
   /// - [cellSize]: Override the calculated cell size for IntGrid layers.
   /// - [useComposite]: For simplified export, whether to use composite image.
+  /// - [tileEnumGrids]: Map of grid name -> (tileLayerName, enumTagName) for tile enum grids.
   ///
   /// Example:
   /// ```dart
-  /// final level = await world.loadLevel('Level_0', intGridLayers: ['Collisions']);
+  /// final level = await world.loadLevel(
+  ///   'Level_0',
+  ///   intGridLayers: ['Collisions'],
+  ///   tileEnumGrids: {'Deadly': ('Tiles', 'Deadly')},
+  /// );
   /// ```
   Future<LdtkLevel> loadLevel(
     String levelIdentifier, {
     List<String> intGridLayers = const [],
     int? cellSize,
     bool useComposite = false,
+    Map<String, (String, String)> tileEnumGrids = const {},
   }) async {
     if (isSimplified) {
       return _loadSimplifiedLevel(
         levelIdentifier,
         intGridLayers: intGridLayers,
         cellSize: cellSize,
+        tileEnumGrids: tileEnumGrids,
       );
     } else {
       return _loadJsonLevel(levelIdentifier);
@@ -165,6 +172,7 @@ class LdtkWorld {
     String levelIdentifier, {
     List<String> intGridLayers = const [],
     int? cellSize,
+    Map<String, (String, String)> tileEnumGrids = const {},
   }) async {
     final parser = LdtkSuperSimpleParser();
 
@@ -194,6 +202,16 @@ class LdtkWorld {
         level,
         intGridLayers,
         cellSize: cellSize,
+      );
+    }
+
+    // Load tile enum grids if specified
+    if (tileEnumGrids.isNotEmpty && ldtklPath != null) {
+      level = await parser.loadTileEnumGrids(
+        ldtklPath,
+        level,
+        tileEnumGrids,
+        assetBasePath: assetBasePath,
       );
     }
 

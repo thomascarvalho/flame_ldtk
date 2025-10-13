@@ -36,10 +36,15 @@ class LdtkLevelComponent extends PositionComponent {
   /// - [cellSize]: Override the calculated cell size for IntGrid layers.
   /// - [useComposite]: For simplified export, whether to use composite image.
   /// - [loadBackground]: Whether to load the background image if defined (default: true).
+  /// - [tileEnumGrids]: Map of grid name -> (tileLayerName, enumTagName) for tile enum grids.
   ///
   /// Example:
   /// ```dart
-  /// await component.loadLevel('Level_0', intGridLayers: ['Collisions']);
+  /// await component.loadLevel(
+  ///   'Level_0',
+  ///   intGridLayers: ['Collisions'],
+  ///   tileEnumGrids: {'Deadly': ('Tiles', 'Deadly')},
+  /// );
   /// ```
   Future<void> loadLevel(
     String levelIdentifier, {
@@ -47,6 +52,7 @@ class LdtkLevelComponent extends PositionComponent {
     int? cellSize,
     bool useComposite = false,
     bool loadBackground = true,
+    Map<String, (String, String)> tileEnumGrids = const {},
   }) async {
     // Load level data using the world
     _levelData = await world.loadLevel(
@@ -54,6 +60,7 @@ class LdtkLevelComponent extends PositionComponent {
       intGridLayers: intGridLayers,
       cellSize: cellSize,
       useComposite: useComposite,
+      tileEnumGrids: tileEnumGrids,
     );
 
     final levelSize =

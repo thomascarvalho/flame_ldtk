@@ -116,6 +116,24 @@ class LdtkEntityDef {
   }
 }
 
+/// Tileset enum tag definition.
+class LdtkEnumTag {
+  final String enumValueId;
+  final List<int> tileIds;
+
+  const LdtkEnumTag({
+    required this.enumValueId,
+    required this.tileIds,
+  });
+
+  factory LdtkEnumTag.fromJson(Map<String, dynamic> json) {
+    return LdtkEnumTag(
+      enumValueId: json['enumValueId'] as String,
+      tileIds: (json['tileIds'] as List? ?? []).map((e) => e as int).toList(),
+    );
+  }
+}
+
 /// Tileset definition.
 class LdtkTilesetDef {
   final String identifier;
@@ -124,6 +142,7 @@ class LdtkTilesetDef {
   final String? relPath;
   final int pxWid;
   final int pxHei;
+  final List<LdtkEnumTag> enumTags;
 
   const LdtkTilesetDef({
     required this.identifier,
@@ -132,6 +151,7 @@ class LdtkTilesetDef {
     this.relPath,
     required this.pxWid,
     required this.pxHei,
+    this.enumTags = const [],
   });
 
   factory LdtkTilesetDef.fromJson(Map<String, dynamic> json) {
@@ -142,7 +162,26 @@ class LdtkTilesetDef {
       relPath: json['relPath'] as String?,
       pxWid: json['pxWid'] as int,
       pxHei: json['pxHei'] as int,
+      enumTags: (json['enumTags'] as List? ?? [])
+          .map((e) => LdtkEnumTag.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
+  }
+
+  /// Returns all tile IDs that have a specific enum tag.
+  List<int> getTileIdsWithTag(String tagName) {
+    for (final tag in enumTags) {
+      if (tag.enumValueId == tagName) {
+        return tag.tileIds;
+      }
+    }
+    return [];
+  }
+
+  /// Checks if a tile ID has a specific enum tag.
+  bool tileHasTag(int tileId, String tagName) {
+    final tileIds = getTileIdsWithTag(tagName);
+    return tileIds.contains(tileId);
   }
 }
 
