@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/thomascarvalho/flame_ldtk/compare/v0.3.0...v0.3.1) (2025-10-16)
+
+
+### Features
+
+* add oxygen renderer ([38e5e9f](https://github.com/thomascarvalho/flame_ldtk/commit/38e5e9f078837a173bdf19c6d21ae0df278a2429))
+* handle pivot on entities ([8d4e896](https://github.com/thomascarvalho/flame_ldtk/commit/8d4e8962462e0fb8f98a7cfb9ea40ea616486dc1))
+* handle tile enums ([0cf3f94](https://github.com/thomascarvalho/flame_ldtk/commit/0cf3f94af64f07e6c55ec5a0c32a97bc0666cd65))
+
 ## [0.3.0](https://github.com/thomascarvalho/flame_ldtk/compare/v0.2.2...v0.3.0) (2025-10-06)
 
 
